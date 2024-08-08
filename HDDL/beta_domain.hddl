@@ -1,0 +1,71 @@
+(define (domain gripper-typed)
+
+(:requirements
+  :typing
+  :hierachie)
+
+(:types place ball gripper)
+
+(:constants left right - gripper)
+
+(:predicates (at-robby ?r - place) (at ?b - ball ?r - place) (free ?g - gripper) (carry ?o - ball ?g - gripper))
+
+(:task move_two_balls
+  :parameters (?b1 - ball ?b2 - ball ?r - place) )
+
+(:task move_one_ball
+  :parameters (?b - ball ?r - place) )
+
+(:task goto
+  :parameters (?r - place) )
+
+(:method m0_move_two_balls
+  :parameters ( ?b1 - ball  ?b2 - ball  ?r - place ?g1 - gripper ?g2 - gripper ?rb - place )
+  :task (move_two_balls ?b1 ?b2 ?r)
+  :precondition (and (at ?b1 ?rb) (at ?b2 ?rb))
+  :ordered-subtasks(and (t1 (goto ?rb)) (t2 (pick ?b1 ?rb ?g1)) (t3 (pick ?b2 ?rb ?g2)) (t4 (move ?rb ?r)) (t5 (drop ?b1 ?r ?g1)) (t6 (drop ?b2 ?r ?g2))) ) 
+
+(:method m1_move_two_balls
+  :parameters ( ?b1 - ball  ?b2 - ball  ?r - place ?g1 - gripper ?rb - place )
+  :task (move_two_balls ?b1 ?b2 ?r)
+  :precondition (and (at ?b1 ?rb) (at ?b2 ?rb))
+  :ordered-subtasks(and (t1 (goto ?rb)) (t2 (m1_move_one_ball ?b1 ?rb ?g1)) (t3 (goto ?rb))) (t4 (m1_move_one_ball ?b2 ?rb ?g1))) ) 
+
+(:method m1_move_one_ball
+  :parameters ( ?b - ball  ?r - place ?g - gripper ?rb - place )
+  :task (move_one_ball ?b ?r)
+  :precondition (and (at ?b ?rb))
+  :ordered-subtasks(and (t1 (goto ?rb)) (t2 (pick ?b ?rb ?g)) (t3 (move ?rb ?r)) (t4 (drop ?b ?r ?g))) ) 
+
+(:method m2_goto
+  :parameters ( ?r - place )
+  :task (goto ?r)
+  :precondition (and (at-robby ?r))
+  :ordered-subtasks(and (t1 (nop))) ) 
+
+(:method m3_goto
+  :parameters ( ?r - place ?from - place )
+  :task (goto ?r)
+  :precondition (and (at-robby ?from) (not (= ?from ?r)))
+  :ordered-subtasks(and (t1 (move ?from ?r))) ) 
+
+(:action move
+  :parameters (?from - place ?to - place)
+  :precondition (at-robby ?from)
+  :effect (and (at-robby ?to) (not (at-robby ?from))))
+
+(:action pick
+  :parameters (?obj - ball ?place - place ?gripper - gripper)
+  :precondition (and (at ?obj ?place) (at-robby ?place) (free ?gripper))
+  :effect (and (carry ?obj ?gripper) (not (at ?obj ?place)) (not (free ?gripper))))
+
+(:action drop
+  :parameters (?obj - ball ?place - place ?gripper - gripper)
+  :precondition (and (carry ?obj ?gripper) (at-robby ?place))
+  :effect (and (at ?obj ?place) (free ?gripper) (not (carry ?obj ?gripper))))
+
+(:action nop
+  :parameters ()
+  :precondition ()
+  :effect ())
+)
