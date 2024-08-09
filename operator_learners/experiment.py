@@ -392,13 +392,6 @@ if __name__ == "__main__":
         source_path = None
         previous_model_dir = os.path.join(args.experiment_dir, list_of_novelties[i-1], 'models')
 
-        if args.no_transfer:
-            print("No Transfer Learning")
-            source_model = None 
-        else:
-            print("Transfer learning")
-            print("Transfering from source policy: ", source_path)
-
         # Trains the policy
         # PRM
         if args.prm:
@@ -465,7 +458,15 @@ if __name__ == "__main__":
             elif args.icm and args.init_policy != None:
                 icm.load_model(os.path.join(args.init_policy, 'icm'))
                 print("Loading ICM model from: ", os.path.join(args.init_policy, 'icm'))
-        
+
+        if args.no_transfer:
+            print("\nNo Transfer Learning")
+            source_model = None 
+        else:
+            print("\nTransfer learning")
+            print("Transfering from source policy: ", source_path)
+            print("Transfering ICM model: ", os.path.join(previous_model_dir, 'icm'))
+
         # Evaluates the source_model on the eval_env for n_eval_between_novelty if it is not None, and saves the results as a csv file in logdir
         # if source_model != None:
         #     print("Evaluating the source policy on the eval_env for {} episodes.".format(n_eval_between_novelty))

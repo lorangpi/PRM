@@ -58,7 +58,6 @@ class PlanWrapper(gym.Wrapper):
         #print("State: ", state.grounded_predicates)
         #print("Memory State: ", self.memory_state.grounded_predicates)
         
-        
         if state.compare(self.memory_state) != {}:
             state_hash = state.__hash__()
             if state_hash + self.memory_state_hash not in self.state_transitions_hashes:
@@ -212,8 +211,3 @@ class PlanWrapper(gym.Wrapper):
         hash_object = hashlib.sha256(state_bytes)  # Hash bytes
         hex_dig = hash_object.hexdigest()  # Get hexadecimal string representation of hash
         return hex_dig
-
-
-
-
-
