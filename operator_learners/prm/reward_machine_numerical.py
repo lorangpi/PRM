@@ -122,7 +122,10 @@ class RewardMachine:
             if effect in new_state:
                 new_state[effect] = state.grounded_predicates[effect] + value
             else:
-                new_state[effect] = track_predicates[effect] + value
+                try:
+                    new_state[effect] = track_predicates[effect] + value
+                except KeyError:
+                    new_state[effect] = state.grounded_predicates[effect] + value
             track_predicates[effect] = new_state[effect]
         # Return the resulting state
         return State(state.detector, init_predicates=new_state), track_predicates
