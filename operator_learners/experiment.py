@@ -392,6 +392,75 @@ if __name__ == "__main__":
         source_path = None
         previous_model_dir = os.path.join(args.experiment_dir, list_of_novelties[i-1], 'models')
 
+        if not(args.no_transfer):
+            if i == 0: 
+                if args.init_policy != None:
+                    source_path = os.path.join(args.init_policy, 'best_model')
+                    source_model = load_policy(args, env, source_path)
+                else:
+                    pass
+            elif i == 1:
+                if args.init_policy == None and os.path.isfile('./models/'+ args.experiment + '/best_model.zip'):
+                    source_path = './models/'+ args.experiment + '/best_model'
+                else:
+                    #source_path = os.path.join(args.modeldir, list_of_novelties[i-1] + '_sac')
+                    source_path = os.path.join(previous_model_dir, 'best_model')
+                source_model = load_policy(args, env, source_path)
+            else:
+                #source_path = os.path.join(args.modeldir, list_of_novelties[i-1] + '_sac')
+                source_path = os.path.join(previous_model_dir, 'best_model')
+                source_model = load_policy(args, env, source_path)
+            
+            if args.icm and i > 0:
+                icm.load_model(os.path.join(previous_model_dir, 'icm'))
+                print("Loading ICM model from: ", os.path.join(previous_model_dir, 'icm'))
+            elif args.icm and args.init_policy != None:
+                icm.load_model(os.path.join(args.init_policy, 'icm'))
+                print("Loading ICM model from: ", os.path.join(args.init_policy, 'icm'))
+
+        if args.no_transfer:
+            print("\nNo Transfer Learning\n")
+            source_model = None 
+        else:
+            print("\nTransfer learning")
+            print("Transfering from source policy: ", source_path)
+            print("")
+
+        # Evaluates the source_model on the eval_env for n_eval_between_novelty if it is not None, and saves the results as a csv file in logdir
+        # if source_model != None:
+        #     print("Evaluating the source policy on the eval_env for {} episodes.".format(n_eval_between_novelty))
+        #     source_model.set_env(eval_env)
+        #     mean_reward = 0
+        #     mean_episode_length = 0
+        #     success_rate = 0
+        #     for episode in range(n_eval_between_novelty):
+        #         episode_rew = 0
+        #         success = False
+        #         episode_length = 0
+        #         done = False
+        #         obs, info = eval_env.reset()
+        #         while not done:
+        #             action, _ = source_model.predict(obs, deterministic=True)
+        #             obs, reward, terminated, truncated, info = eval_env.step(action)
+        #             if info.get('is_success') is not None:
+        #                 success = info.get('is_success')
+        #             episode_rew += reward
+        #             episode_length += 1
+        #             done = terminated or truncated
+        #         success_rate += success
+        #         mean_reward += episode_rew
+        #         mean_episode_length += episode_length
+        #     success_rate = success_rate / n_eval_between_novelty
+        #     mean_reward = mean_reward / n_eval_between_novelty
+        #     mean_episode_length = mean_episode_length / n_eval_between_novelty
+        #     # Save the success rate, the reward and the episode length in a csv file
+        #     with open(os.path.join(args.logdir, 'results_eval.csv'), 'a') as f:
+        #         f.write("{},{},{},{}\n".format('pre_training', success_rate, mean_reward, mean_episode_length))
+        #         f.close()
+        #     print("Pre-training Success rate: {}, Reward: {}, Episode length: {}".format(success_rate, mean_reward, mean_episode_length))
+
+        #     source_model.set_env(env)
+
         # Trains the policy
         # PRM
         if args.prm:
@@ -433,78 +502,6 @@ if __name__ == "__main__":
             eval_env.reset(seed=args.seed)
             model = learn_policy(args, env, eval_env, list_of_novelties[i], source_model)
 
-        if not(args.no_transfer):
-            if i == 0: 
-                if args.init_policy != None:
-                    source_path = os.path.join(args.init_policy, 'best_model')
-                    source_model = load_policy(args, env, source_path)
-                else:
-                    pass
-            elif i == 1:
-                if args.init_policy == None and os.path.isfile('./models/'+ args.experiment + '/best_model.zip'):
-                    source_path = './models/'+ args.experiment + '/best_model'
-                else:
-                    #source_path = os.path.join(args.modeldir, list_of_novelties[i-1] + '_sac')
-                    source_path = os.path.join(previous_model_dir, 'best_model')
-                source_model = load_policy(args, env, source_path)
-            else:
-                #source_path = os.path.join(args.modeldir, list_of_novelties[i-1] + '_sac')
-                source_path = os.path.join(previous_model_dir, 'best_model')
-                source_model = load_policy(args, env, source_path)
-            
-            if args.icm and i > 0:
-                icm.load_model(os.path.join(previous_model_dir, 'icm'))
-                print("Loading ICM model from: ", os.path.join(previous_model_dir, 'icm'))
-            elif args.icm and args.init_policy != None:
-                icm.load_model(os.path.join(args.init_policy, 'icm'))
-                print("Loading ICM model from: ", os.path.join(args.init_policy, 'icm'))
-
-        if args.no_transfer:
-            print("\nNo Transfer Learning")
-            source_model = None 
-        else:
-            print("\nTransfer learning")
-            print("Transfering from source policy: ", source_path)
-            print("Transfering ICM model: ", os.path.join(previous_model_dir, 'icm'))
-
-        # Evaluates the source_model on the eval_env for n_eval_between_novelty if it is not None, and saves the results as a csv file in logdir
-        # if source_model != None:
-        #     print("Evaluating the source policy on the eval_env for {} episodes.".format(n_eval_between_novelty))
-        #     source_model.set_env(eval_env)
-        #     mean_reward = 0
-        #     mean_episode_length = 0
-        #     success_rate = 0
-        #     for episode in range(n_eval_between_novelty):
-        #         episode_rew = 0
-        #         success = False
-        #         episode_length = 0
-        #         done = False
-        #         obs, info = eval_env.reset()
-        #         while not done:
-        #             action, _ = source_model.predict(obs, deterministic=True)
-        #             obs, reward, terminated, truncated, info = eval_env.step(action)
-        #             if info.get('is_success') is not None:
-        #                 success = info.get('is_success')
-        #             episode_rew += reward
-        #             episode_length += 1
-        #             done = terminated or truncated
-        #         success_rate += success
-        #         mean_reward += episode_rew
-        #         mean_episode_length += episode_length
-        #     success_rate = success_rate / n_eval_between_novelty
-        #     mean_reward = mean_reward / n_eval_between_novelty
-        #     mean_episode_length = mean_episode_length / n_eval_between_novelty
-        #     # Save the success rate, the reward and the episode length in a csv file
-        #     with open(os.path.join(args.logdir, 'results_eval.csv'), 'a') as f:
-        #         f.write("{},{},{},{}\n".format('pre_training', success_rate, mean_reward, mean_episode_length))
-        #         f.close()
-        #     print("Pre-training Success rate: {}, Reward: {}, Episode length: {}".format(success_rate, mean_reward, mean_episode_length))
-
-        #     source_model.set_env(env)
-        # Deletes the models
-        del model
-        del source_model
-
         # Evaluates the model on the eval_env for n_eval_between_novelty, and adds the results to the csv file in logdir
         print("Evaluating the best model policy on the eval_env for {} episodes.".format(n_eval_between_novelty))
         # Loads best_model from args.modeldir
@@ -537,5 +534,6 @@ if __name__ == "__main__":
             f.write("{},{},{},{}\n".format('post_training', success_rate, mean_reward, mean_episode_length))
             f.close()
         print("Post-training Success rate: {}, Reward: {}, Episode length: {}".format(success_rate, mean_reward, mean_episode_length))
-        # Deletes the model
+        # Deletes the models
         del model
+        del source_model
