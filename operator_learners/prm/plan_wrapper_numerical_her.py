@@ -14,7 +14,7 @@ class HERPlanWrapper(gym.Wrapper):
     # Also during training, the planner is used to generate a plan to reach the goal state
     # If the plan is not empty, the current state as detected by the detector is added in the set of desired goals
 
-    def __init__(self, env, task_goal, actions, num_timesteps=None, detector=None, domain="generated_domain", problem="generated_problem"):
+    def __init__(self, env, task_goal, actions, num_timesteps=None, detector=None, domain="generated_domain", problem="generated_problem", pddl_path="./PDDL_files/"):
         super().__init__(env)
         self.env = env
         if detector is None:

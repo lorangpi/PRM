@@ -235,7 +235,7 @@ def restrict_action(actions, grounded_action):
     # Return the new list of actions
     return new_actions
 
-def replace_actions_in_domain(file, actions):
+def replace_actions_in_domain(file, new_file_path, actions):
     with open(file, 'r') as f:
         domain = f.read()
     #print(domain)
@@ -256,7 +256,7 @@ def replace_actions_in_domain(file, actions):
     new_actions = '\n'.join([action._to_pddl() for action in actions])
     #print("New Actions = ", new_actions)
 
-    new_file = file.rsplit('.', 1)[0] + '_dummy.pddl'
+    new_file = new_file_path
     with open(new_file, 'w') as f:
         f.write(start + new_actions + end)
 

@@ -12,9 +12,9 @@ applicator = {'MOVE':['Reach'],
 		}
 
 
-pddl_dir = "./PDDL_files"
+pddl_path = "./PDDL_files"
 
-def call_planner(domain, problem, structure="pddl"):
+def call_planner(domain, problem, structure="pddl", pddl_dir=pddl_path):
     '''
         Given a domain and a problem file
         This function return the ffmetric Planner output.
@@ -69,8 +69,7 @@ def _output_to_plan(output, structure):
         #            game_action_set[i][j] = applicator[game_action_set[i]]
         return action_set, game_action_set
 
-def generate_pddls(init, goal, new_item=None, filename: str = "problem"):
-    pddl_dir = "./PDDL_files"
+def generate_pddls(init, goal, new_item=None, filename: str = "problem", pddl_dir="./PDDL_files"):
     os.makedirs(pddl_dir, exist_ok = True)
     generate_prob_pddl(pddl_dir, init, goal, filename=filename)
     if new_item is not None:

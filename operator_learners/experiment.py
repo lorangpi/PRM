@@ -292,9 +292,11 @@ if __name__ == "__main__":
         args.logdir = os.path.join(args.experiment_dir, list_of_novelties[i], 'logs')
         args.modeldir = os.path.join(args.experiment_dir, list_of_novelties[i], 'models')
         args.bufferdir = os.path.join(args.experiment_dir, list_of_novelties[i], 'buffers')
+        args.pddldir = os.path.join(args.experiment_dir, list_of_novelties[i], 'pddl')
         os.makedirs(args.logdir, exist_ok=True)
         os.makedirs(args.modeldir, exist_ok=True)
         os.makedirs(args.bufferdir, exist_ok=True)
+        os.makedirs(args.pddldir, exist_ok=True)
 
         # Test if the file 'best_model.zip' already exists in the folder './models/'+ args.experiment + '/'
         #if list_of_novelties[i] == 'PickPlaceCan' and (os.path.isfile('./models/'+ args.experiment + '/best_model.zip') or (args.no_transfer)):
@@ -413,14 +415,14 @@ if __name__ == "__main__":
             #task_goal = {"at(can,drop)":0, "grasped(can)":False,}
             task_goal = {"at(can,drop)":1,}
             detector = RoboSuite_PickPlace_Detector(env, grid_size=200)
-            env = PlanWrapper(env, task_goal=task_goal, actions=actions, detector=detector, num_timesteps=args.timesteps)
+            env = PlanWrapper(env, task_goal=task_goal, actions=actions, detector=detector, num_timesteps=args.timesteps, pddl_path=args.pddldir)
         elif args.prm_her:
             actions = []
             print("Actions: ", [action._to_pddl() for action in actions])
             task_goal = {"at(can,drop)":1,}
             detector = RoboSuite_PickPlace_Detector(env, grid_size=200)
-            env = HERPlanWrapper(env, task_goal=task_goal, actions=actions, detector=detector, num_timesteps=args.timesteps)
-            eval_env = HERPlanWrapper(eval_env, task_goal=task_goal, actions=actions, detector=detector, num_timesteps=args.timesteps)
+            env = HERPlanWrapper(env, task_goal=task_goal, actions=actions, detector=detector, num_timesteps=args.timesteps, pddl_path=args.pddldir)
+            eval_env = HERPlanWrapper(eval_env, task_goal=task_goal, actions=actions, detector=detector, num_timesteps=args.timesteps, pddl_path=args.pddldir)
         if args.icm:
             print("Using ICM")
             env = ICMWrapper(env, icm)

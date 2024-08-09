@@ -14,7 +14,7 @@ class PlanWrapper(gym.Wrapper):
     # Also during training, the planner is used to generate a plan to reach the goal state
     # If the plan is not empty, the current state as detected by the detector is added in the set of desired goals
 
-    def __init__(self, env, task_goal, actions, num_timesteps=None, detector=None, domain="generated_domain", problem="generated_problem"):
+    def __init__(self, env, task_goal, actions, num_timesteps=None, detector=None, domain="domain_numerical", problem="problem_dummy", pddl_path="./PDDL_files/"):
         super().__init__(env)
         self.env = env
         if detector is None:
@@ -24,14 +24,16 @@ class PlanWrapper(gym.Wrapper):
         self.num_timesteps = num_timesteps
         if num_timesteps is not None:
             self.plan_counter_log = [int(2**i) for i in range(int(np.log2(num_timesteps)))]
-            # self.plan_counter_log = np.logspace(1, np.log10(self.num_timesteps/10), num=20, base=10, dtype=int)
-            # self.plan_counter_log = np.insert(self.plan_counter_log, 0, 5)
-            # self.plan_counter_log = np.insert(self.plan_counter_log, 0, 1)
-            # self.plan_counter_log = list(self.plan_counter_log)
-        self.domain = domain
-        self.problem = problem
+        # PDDL files paths
+        self.base_domain = "./PDDL_files/" + domain + ".pddl"
+        self.base_problem = "./PDDL_files/" + problem + ".pddl"
+        self.new_domain = pddl_path + os.sep + domain + "_new.pddl"
+        self.new_domain_name = domain + "_new"
+        self.new_problem = pddl_path + os.sep + problem + ".pddl"
+        self.new_problem_name = problem + "_new"
+        self.pddl_path = pddl_path
+        # Goal and state hashing lists initialization
         self.desired_goals = [task_goal]
-        #self.desired_goal = task_goal
         self.task_goal = task_goal
         self.no_path_set_hashes = []
         self.goal_set_hashes = []
@@ -40,9 +42,9 @@ class PlanWrapper(gym.Wrapper):
         self.plan_counter = 0
         self.reset_plan = 20
         state = State(self.detector, numerical=True)
-        generate_pddls(state, goal=State(self.detector, init_predicates=task_goal, numerical=True)._to_pddl(), filename="problem_dummy")
+        generate_pddls(state, goal=State(self.detector, init_predicates=task_goal, numerical=True)._to_pddl(), filename=self.new_problem_name, pddl_dir=pddl_path)
         #if actions is None:
-        #    self.actions = load_action_from_file("./PDDL_files/domain_numerical.pddl", "./PDDL_files/problem_dummy.pddl")
+        #    self.actions = load_action_from_file(self.domain, self.problem)
         #else:
         #    self.actions = actions
         self.actions = actions
@@ -102,7 +104,7 @@ class PlanWrapper(gym.Wrapper):
                             self.action_counter += 1
             # if state_hash not in self.no_path_set_hashes and state_hash not in self.goal_set_hashes:
             #     # The planner will return a plan to reach the task goal, if a plan it exists, else False
-            #     planner.generate_pddls(state, self.task_goal._to_pddl(), filename=self.problem)
+            #     planner.generate_pddls(state, self.task_goal._to_pddl(), filename=self.new_problem_name, pddl_dir=pddl_path)
             #     plan, _ = planner.call_planner(self.domain, self.problem)
             #     # print("The plan is: ", plan)
             #     if plan != False:
@@ -162,7 +164,7 @@ class PlanWrapper(gym.Wrapper):
                 print("Generating New Reward Machine. Plan Counter: ", self.plan_counter_log[0])
                 self.desired_goal = State(self.detector, init_predicates=np.random.choice(self.desired_goals), numerical=True)
                 self.filter_actions()
-                replace_actions_in_domain("./PDDL_files/domain_numerical.pddl", self.actions)
+                replace_actions_in_domain(self.base_domain, self.new_domain, self.actions)
                 self.reward_machine = self.generate_reward_machine()
                 # Pop the first element of the plan counter log
                 if self.plan_counter != 0:
@@ -171,9 +173,9 @@ class PlanWrapper(gym.Wrapper):
             if self.plan_counter == 0 or self.plan_counter % self.reset_plan == 0:
                 self.desired_goal = State(self.detector, init_predicates=np.random.choice(self.desired_goals), numerical=True)
                 self.filter_actions()
-                replace_actions_in_domain("./PDDL_files/domain_numerical.pddl", self.actions)
+                replace_actions_in_domain(self.base_domain, self.new_domain, self.actions)
                 self.reward_machine = self.generate_reward_machine()
-
+        self.reward_machine.reset_reward()
         # Randomly choose a desired goal from the set of desired goals every each 5 resets
         # if self.plan_counter % self.reset_plan == 0 or self.plan_counter == 0:
         #     self.desired_goal = State(self.detector, np.random.choice(self.desired_goals), numerical=True)
@@ -181,7 +183,7 @@ class PlanWrapper(gym.Wrapper):
         #     self.reset_state = State(self.detector, numerical=True)
         #     self.memory_state = State(self.detector, numerical=True)
         #     self.memory_state_hash = self.hash_state(self.memory_state)
-        #     replace_actions_in_domain("./PDDL_files/domain_numerical.pddl", self.actions)
+        #     replace_actions_in_domain(self.domain, self.actions)
         self.plan_counter += 1
         return obs, info
 
@@ -194,8 +196,8 @@ class PlanWrapper(gym.Wrapper):
         # Generate a reward machine for the current desired goal
         #print("PDDL Goal: ", goal._to_pddl())
         
-        generate_pddls(state, goal=goal._to_pddl(), filename="problem_dummy")
-        plan, _ = call_planner("domain_numerical_dummy", "problem_dummy")
+        generate_pddls(state, goal=goal._to_pddl(), filename=self.new_problem_name, pddl_dir=self.pddl_path)
+        plan, _ = call_planner(self.new_domain_name, self.new_problem_name, pddl_dir=self.pddl_path)
         
         #plan = []
         print("Goal: ", goal.grounded_predicates)

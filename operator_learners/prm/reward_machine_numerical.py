@@ -7,11 +7,12 @@ class RewardMachine:
         self.total_reward = 800  # Define the total reward
         self.plan = plan
         self.goal = goal
+        self.reward = -1
         if plan != False:
             self.state_sequence = self.convert_plan_to_states(plan, actions, initial_state, val_goal)
             #self.state_sequence = self.state_sequence[1:]
             self.label_sequence = self.state_to_label(self.state_sequence)
-            #print("State Sequence = ", [state._to_pddl() for state in self.state_sequence], "\n")
+            print("State Sequence = ", [state._to_pddl() for state in self.state_sequence], "\n")
 
     def state_to_label(self, state_sequence):
         # Convert the state sequence to a sequence of labels
@@ -21,7 +22,7 @@ class RewardMachine:
             label_sequence.append(label)
         return label_sequence
 
-    def get_reward(self, state):
+    def get_reward_base(self, state):
         # If the agent is not following a plan, return the total reward if the goal is satisfied
         if self.plan == False:
             if state.satisfies(self.goal):
@@ -43,6 +44,38 @@ class RewardMachine:
                     reward = self.total_reward * sum(range(0 + 1, i + 2))  / sum(range(1, len(self.state_sequence) + 1))
                     #print("Reward = ", reward)
                     self.current_state_index = i + 1
+                    return reward
+        # If not all predicates are met, return -1
+        return -1
+
+    def reset_reward(self):
+        self.current_state_index = 0
+        self.reward = -1
+
+    def get_reward(self, state):
+        # If the agent is not following a plan, return the total reward if the goal is satisfied
+        if self.plan == False:
+            if state.satisfies(self.goal):
+                return self.total_reward
+            else:
+                return -1
+        if state.satisfies(self.goal):
+                print("Goal Reached: Reward = ", self.total_reward)
+                return self.total_reward
+        # Check if all predicates in the next state in the label sequence are met in the current state
+        if self.state_sequence is not None:
+            for i in range(self.current_state_index, len(self.state_sequence)):
+                next_state = self.state_sequence[i]
+                if state.satisfies(next_state):
+                    print("State satisfies:  ", next_state._to_pddl())
+                    # Calculate the reward for reaching the next state in the sequence
+                    # The reward is proportional to the current state index
+                    # If the agent jumps a state, it gets the sum of the rewards for the skipped states
+                    #reward = self.total_reward * sum(range(0 + 1, i + 2))  / sum(range(1, len(self.state_sequence) + 1))
+                    #print("Reward = ", reward)
+                    #self.current_state_index = i + 1
+                    reward = -1 + 0.8 * sum(range(0 + 1, i + 2))  / sum(range(1, len(self.state_sequence) + 1))
+                    print("Reward = ", reward)
                     return reward
         # If not all predicates are met, return -1
         return -1

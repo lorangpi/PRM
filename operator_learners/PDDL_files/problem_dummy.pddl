@@ -10,12 +10,12 @@
 		gripper - gripper
 	)
 (:init
-	(= (at can drop ) 8)
-	(= (at can pick ) 4)
+	(= (at can drop ) 10)
+	(= (at can pick ) 2)
 	(= (at_gripper gripper activate ) 5)
-	(= (at_gripper gripper drop ) 8)
-	(= (at_gripper gripper lightswitch ) 14)
-	(= (at_gripper gripper pick ) 4)
+	(= (at_gripper gripper drop ) 10)
+	(= (at_gripper gripper lightswitch ) 15)
+	(= (at_gripper gripper pick ) 2)
 	(grasped can)
 	(locked door)
 	(= (open door ) 0)

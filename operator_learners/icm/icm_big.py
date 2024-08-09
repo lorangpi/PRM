@@ -146,6 +146,11 @@ class ICM(nn.Module):
         self.eta = eta  # Scaling factor for intrinsic reward
 
     def forward(self, state, action, next_state):
+        # All inputs to device
+        state = state.to(self.device)
+        action = action.to(self.device)
+        next_state = next_state.to(self.device)
+        
         # Step 1: Feature extraction
         state_features = self.feature_extractor(state)
         next_state_features = self.feature_extractor(next_state)
