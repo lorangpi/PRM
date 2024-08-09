@@ -475,7 +475,7 @@ if __name__ == "__main__":
             #replace_actions_in_domain("./PDDL_files/domain_numerical.pddl", actions)
             #task_goal = State(RoboSuite_PickPlace_Detector(env), {"at(can,drop)":True, "picked_up(can)":False,})
             #task_goal = {"at(can,drop)":0, "grasped(can)":False,}
-            task_goal = {"at(can,drop)":1,}
+            task_goal = {"at(can,drop)":1, "grasped(can)":True,}
             detector = RoboSuite_PickPlace_Detector(env, grid_size=200)
             env = PlanWrapper(env, task_goal=task_goal, actions=actions, detector=detector, num_timesteps=args.timesteps, pddl_path=args.pddldir)
         elif args.prm_her:
