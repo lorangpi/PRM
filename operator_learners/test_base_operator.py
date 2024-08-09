@@ -9,9 +9,9 @@ from stable_baselines3 import SAC, HerReplayBuffer
 from robosuite.wrappers.gym_wrapper import GymWrapper
 from operator_wrapper import PickWrapper, ReachWrapper
 from detector import RoboSuite_PickPlace_Detector
-from state import State
-from HDDL.planner import *
-from plan_wrapper import PlanWrapper
+from prm.state import State
+#from HDDL.planner import *
+from prm.plan_wrapper import PlanWrapper
 from HER_wrapper import HERWrapper
 from robosuite.devices import Keyboard
 from robosuite.utils.input_utils import input2action
@@ -46,7 +46,7 @@ env.viewer.add_keypress_callback(device.on_press)
 
 # Define the detector
 detector = RoboSuite_PickPlace_Detector(env)
-env = PlanWrapper(env, sub_goal="at(can,drop)", task_goal="(at can drop) (not (picked_up can))", detector=detector)
+#env = PlanWrapper(env, task_goal="(at can drop)", detector=detector)
 #Initialize device control
 device.start_control()
 
@@ -54,18 +54,20 @@ device.start_control()
 #model = SAC.load("/home/lorangpi/HyGOAL/operator_learners/models/sac/best_model.zip")
 model = SAC.load("/home/lorangpi/HyGOAL/operator_learners/models/ltl/base/best_model.zip", env=env)
 
-# for i in range(500):
-#     #action = env.action_space.sample()
-#     action, _ = model.predict(obs, deterministic=True)
-#     obs, reward, terminated, truncated, info = env.step(action)
-#     env.render()
-#     #print(detector.get_groundings(as_dict=True, binary_to_float=True, return_distance=False))
-#     if terminated or truncated or i == 499:
-#         env.close()
-#         env.close_renderer()
-#         #sys.exit()
-#         #obs, _ = env.reset()
-#         break
+obs, _ = env.reset()
+
+for i in range(5000):
+    #action = env.action_space.sample()
+    action, _ = model.predict(obs, deterministic=True)
+    obs, reward, terminated, truncated, info = env.step(action)
+    env.render()
+    #print(detector.get_groundings(as_dict=True, binary_to_float=True, return_distance=False))
+    if terminated or truncated or i == 4999:
+        env.close()
+        env.close_renderer()
+        #sys.exit()
+        #obs, _ = env.reset()
+        break
 
 start = True
 

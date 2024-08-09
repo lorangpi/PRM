@@ -179,31 +179,31 @@ class Action:
     def __str__(self):
         return self._to_pddl()
 
-# def load_action_from_file(domain_file, problem_file, numerical):
+def load_action_from_file(domain_file, problem_file, numerical):
 
-#     actions = []
-#     try:
-#         domprob = pddlpy.DomainProblem(domain_file, problem_file)
-#         for operator in domprob.operators():
-#             operator_details = domprob.domain.operators[operator]
-#             parameters = list(operator_details.variable_list.items())
-#             parameters = [(param[0].replace('?', ''), param[1]) for param in parameters]
-#             preconditions = operator_details.precondition_pos
-#             neg_preconditions = operator_details.precondition_neg
-#             effects = operator_details.effect_pos
-#             neg_effects = operator_details.effect_neg
-#             effects = [atom.predicate for atom in list(effects)]
-#             neg_effects = [atom.predicate for atom in list(neg_effects)]
-#             preconditions = [atom.predicate for atom in list(preconditions )]
-#             neg_preconditions = [atom.predicate for atom in list(neg_preconditions )]
-#             effects = {f'{effect[0]}({", ".join(effect[1:])})': True for effect in list(effects)}
-#             effects.update({f'{effect[0]}({", ".join(effect[1:])})': False for effect in neg_effects})
-#             pre = {f'{pre[0]}({", ".join(pre[1:])})': True for pre in preconditions}
-#             pre.update({f'{pre[0]}({", ".join(pre[1:])})': False for pre in neg_preconditions})
-#             actions.append(Action(parameters, pre, effects, name=operator))
-#     except Exception as e:
-#         print("Error loading actions from domain and problem files: ", e)
-#     return actions
+    actions = []
+    try:
+        domprob = pddlpy.DomainProblem(domain_file, problem_file)
+        for operator in domprob.operators():
+            operator_details = domprob.domain.operators[operator]
+            parameters = list(operator_details.variable_list.items())
+            parameters = [(param[0].replace('?', ''), param[1]) for param in parameters]
+            preconditions = operator_details.precondition_pos
+            neg_preconditions = operator_details.precondition_neg
+            effects = operator_details.effect_pos
+            neg_effects = operator_details.effect_neg
+            effects = [atom.predicate for atom in list(effects)]
+            neg_effects = [atom.predicate for atom in list(neg_effects)]
+            preconditions = [atom.predicate for atom in list(preconditions )]
+            neg_preconditions = [atom.predicate for atom in list(neg_preconditions )]
+            effects = {f'{effect[0]}({", ".join(effect[1:])})': True for effect in list(effects)}
+            effects.update({f'{effect[0]}({", ".join(effect[1:])})': False for effect in neg_effects})
+            pre = {f'{pre[0]}({", ".join(pre[1:])})': True for pre in preconditions}
+            pre.update({f'{pre[0]}({", ".join(pre[1:])})': False for pre in neg_preconditions})
+            actions.append(Action(parameters, pre, effects, name=operator))
+    except Exception as e:
+        print("Error loading actions from domain and problem files: ", e)
+    return actions
     
 def restrict_action(actions, grounded_action):
     # Parse the grounded action

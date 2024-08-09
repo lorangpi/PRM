@@ -20,7 +20,7 @@ class HERWrapper(gym.Wrapper):
         self.achieved_goal_key = 'achieved_goal'
         self.desired_goal = None
         self.achieved_goal = None
-        self.detector = RoboSuite_PickPlace_Detector(env, factor=factor, return_int=return_int)
+        self.detector = RoboSuite_PickPlace_Detector(env)
         self.dense_reward = dense_reward
         self.init_state = self.detector.get_groundings(as_dict=False, binary_to_float=True, return_distance=True)
         self.goal = goal
@@ -30,18 +30,20 @@ class HERWrapper(gym.Wrapper):
         self.augmented_obs = augmented_obs
         self.symbolic_goal = symbolic_goal
         self.obs_dim = self.env.obs_dim
-        if symbolic_goal:
-            goal_low = np.zeros(len(self.init_state))
-            goal_high = self.env.max_distance * self.factor * np.ones(len(self.init_state))
-        else:
-            goal_low = low
-            goal_high = high
+
         if self.augmented_obs:
             high = np.concatenate((np.inf * np.ones(self.obs_dim), goal_high))
             low = -high
         else:
             high = np.inf * np.ones(self.obs_dim)
             low = -high
+
+        if symbolic_goal:
+            goal_low = np.zeros(len(self.init_state))
+            goal_high = self.env.max_distance * self.factor * np.ones(len(self.init_state))
+        else:
+            goal_low = low
+            goal_high = high
 
         observation_space = gym.spaces.Box(low, high, dtype=np.float64)
 
