@@ -60,14 +60,14 @@ class RewardMachine:
             else:
                 return -1
         if state.satisfies(self.goal):
-                print("Goal Reached: Reward = ", self.total_reward)
+                #print("Goal Reached: Reward = ", self.total_reward)
                 return self.total_reward
         # Check if all predicates in the next state in the label sequence are met in the current state
         if self.state_sequence is not None:
             for i in range(self.current_state_index, len(self.state_sequence)):
                 next_state = self.state_sequence[i]
                 if state.satisfies(next_state):
-                    print("State satisfies:  ", next_state._to_pddl())
+                    #print("State satisfies:  ", next_state._to_pddl())
                     # Calculate the reward for reaching the next state in the sequence
                     # The reward is proportional to the current state index
                     # If the agent jumps a state, it gets the sum of the rewards for the skipped states
@@ -75,7 +75,7 @@ class RewardMachine:
                     #print("Reward = ", reward)
                     #self.current_state_index = i + 1
                     reward = -1 + 0.8 * sum(range(0 + 1, i + 2))  / sum(range(1, len(self.state_sequence) + 1))
-                    print("Reward = ", reward)
+                    #print("Reward = ", reward)
                     return reward
         # If not all predicates are met, return -1
         return -1
