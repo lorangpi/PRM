@@ -24,6 +24,8 @@ class PlanWrapper(gym.Wrapper):
         self.num_timesteps = num_timesteps
         if num_timesteps is not None:
             self.plan_counter_log = [int(2**i) for i in range(int(np.log2(num_timesteps)))]
+            # Add 2 to all the elements of the plan counter log
+            self.plan_counter_log = [i + 2 for i in self.plan_counter_log]
         # PDDL files paths
         self.base_domain = "./PDDL_files/" + domain + ".pddl"
         self.base_problem = "./PDDL_files/" + problem + ".pddl"
@@ -159,15 +161,14 @@ class PlanWrapper(gym.Wrapper):
         if self.num_timesteps is not None:
             if self.plan_counter == 0:
                 print("Plan Counter Log: ", self.plan_counter_log)
-            if self.plan_counter == 0 or self.plan_counter == self.plan_counter_log[0]:
-                print("Generating New Reward Machine. Plan Counter: ", self.plan_counter_log[0])
+            if self.plan_counter == 0 or self.plan_counter in self.plan_counter_log:
+                print("Generating New Reward Machine. Plan Counter: ", self.plan_counter )
                 self.desired_goal = State(self.detector, init_predicates=np.random.choice(self.desired_goals), numerical=True)
                 self.filter_actions()
                 replace_actions_in_domain(self.base_domain, self.new_domain, self.actions)
                 self.reward_machine = self.generate_reward_machine()
                 # Pop the first element of the plan counter log
-                if self.plan_counter != 0:
-                    self.plan_counter_log.pop(0)
+                self.plan_counter_log.pop(0)
         else:
             if self.plan_counter == 0 or self.plan_counter % self.reset_plan == 0:
                 self.desired_goal = State(self.detector, init_predicates=np.random.choice(self.desired_goals), numerical=True)
@@ -184,6 +185,8 @@ class PlanWrapper(gym.Wrapper):
         #     self.memory_state_hash = self.hash_state(self.memory_state)
         #     replace_actions_in_domain(self.domain, self.actions)
         self.plan_counter += 1
+        print("Plan Counter: ", self.plan_counter)
+        print("Log: ", self.plan_counter_log)
         return obs, info
 
     def generate_reward_machine(self, state=None, goal=None):

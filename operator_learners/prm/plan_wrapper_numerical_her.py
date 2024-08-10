@@ -24,8 +24,8 @@ class HERPlanWrapper(gym.Wrapper):
         self.num_timesteps = num_timesteps
         if num_timesteps is not None:
             self.plan_counter_log = [int(2**i) for i in range(int(np.log2(num_timesteps)))]
-            # insert 3 times 0 at the beginning of the list
-            self.plan_counter_log = [0, 0, 0] + self.plan_counter_log
+            # Add 2 to all the elements of the plan counter log
+            self.plan_counter_log = [i + 2 for i in self.plan_counter_log]
         # PDDL files paths
         self.base_domain = "./PDDL_files/" + domain + ".pddl"
         self.base_problem = "./PDDL_files/" + problem + ".pddl"
