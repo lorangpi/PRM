@@ -1,7 +1,7 @@
 from prm.state import State
 
 class RewardMachine:
-    def __init__(self, plan, actions, goal, initial_state, val_goal=0):
+    def __init__(self, plan, actions, goal, initial_state):
         self.plan = plan
         self.current_state_index = 0
         self.total_reward = 800  # Define the total reward
@@ -9,7 +9,7 @@ class RewardMachine:
         self.goal = goal
         self.reward = -1
         if plan != False:
-            self.state_sequence = self.convert_plan_to_states(plan, actions, initial_state, val_goal)
+            self.state_sequence = self.convert_plan_to_states(plan, actions, initial_state)
             #self.state_sequence = self.state_sequence[1:]
             self.label_sequence = self.state_to_label(self.state_sequence)
             print("State Sequence = ", [state._to_pddl() for state in self.state_sequence], "\n")
@@ -124,13 +124,13 @@ class RewardMachine:
             else:
                 try:
                     new_state[effect] = track_predicates[effect] + value
+                    track_predicates[effect] = new_state[effect]
                 except KeyError:
                     pass
-            track_predicates[effect] = new_state[effect]
         # Return the resulting state
         return State(state.detector, init_predicates=new_state), track_predicates
 
-    def convert_plan_to_states(self, plan, actions, initial_state, goal=0):
+    def convert_plan_to_states(self, plan, actions, initial_state):
         # Initialize the state sequence with the initial state
         #state_sequence = [initial_state]
         state_sequence = []

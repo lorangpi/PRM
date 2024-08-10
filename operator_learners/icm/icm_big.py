@@ -338,4 +338,5 @@ class ICM(nn.Module):
         torch.save(self.state_dict(), path)
 
     def load_model(self, path):
-        self.load_state_dict(torch.load(path))
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.load_state_dict(torch.load(path, map_location=device))

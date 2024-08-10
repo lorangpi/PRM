@@ -24,6 +24,8 @@ class HERPlanWrapper(gym.Wrapper):
         self.num_timesteps = num_timesteps
         if num_timesteps is not None:
             self.plan_counter_log = [int(2**i) for i in range(int(np.log2(num_timesteps)))]
+            # insert 3 times 0 at the beginning of the list
+            self.plan_counter_log = [0, 0, 0] + self.plan_counter_log
         # PDDL files paths
         self.base_domain = "./PDDL_files/" + domain + ".pddl"
         self.base_problem = "./PDDL_files/" + problem + ".pddl"
@@ -210,13 +212,27 @@ class HERPlanWrapper(gym.Wrapper):
 
         # Compute the reward for each goal in the batch
         rewards = []
+        counter = 0
         for achieved, desired in zip(achieved_goal, desired_goal):
-            achieved_goal_predicates = {k: v for k, v in zip(self.task_goal.keys(), achieved)}
-            desired_goal_predicates = {k: int(v) for k, v in zip(self.task_goal.keys(), desired)}
-            #print("Achieved Goal: ", achieved_goal_predicates)
-            #print("Desired Goal: ", desired_goal_predicates)
-            rew_machine = self.generate_reward_machine(goal=State(self.detector, init_predicates=desired_goal_predicates, numerical=True), val_goal=desired[0])
-            rewards.append(rew_machine.get_reward(State(self.detector, init_predicates=achieved_goal_predicates, numerical=True)))
+            achieved_goal_predicates = {k: bool(v) if self.detector.predicate_type[k.split('(')[0]] == "bool" else int(v) for k, v in zip(self.task_goal.keys(), achieved)}
+            desired_goal_predicates = {k: bool(v) if self.detector.predicate_type[k.split('(')[0]] == "bool" else int(v) for k, v in zip(self.task_goal.keys(), desired)}
+
+            achieved_state = State(self.detector, init_predicates=achieved_goal_predicates, numerical=True)
+            desired_state = State(self.detector, init_predicates=desired_goal_predicates, numerical=True)
+            if achieved_state.satisfies(desired_state):
+                r = 1000
+            else:
+                rew_machine = self.generate_reward_machine(goal=State(self.detector, init_predicates=desired_goal_predicates, numerical=True))
+                if type(rew_machine) == int:
+                    r = rew_machine
+                else:
+                    r = rew_machine.get_reward(State(self.detector, init_predicates=achieved_goal_predicates, numerical=True))
+            #if counter % 100 == 0:
+            #    print("\nAchieved Goal: ", achieved_goal_predicates)
+            #    print("Desired Goal: ", desired_goal_predicates)
+            #    print("Reward: ", r)
+            counter += 1
+            rewards.append(r)
         return np.asarray(rewards)
 
     def generate_reward_machine(self, state=None, goal=None):
@@ -229,12 +245,15 @@ class HERPlanWrapper(gym.Wrapper):
         #print("PDDL Goal: ", goal._to_pddl())
         
         generate_pddls(state, goal=goal._to_pddl(), filename=self.new_problem_name, pddl_dir=self.pddl_path)
-        plan, _ = call_planner(self.new_domain_name, self.new_problem_name, pddl_dir=self.pddl_path)
+        plan, _ = call_planner(self.new_domain_name, self.new_problem_name, pddl_dir=self.pddl_path, verbose=0)
+
+        if type(plan) == bool and plan:
+            return int(1000)
         
         #plan = []
-        print("Goal: ", goal.grounded_predicates)
-        print("State: ", state.grounded_predicates)
-        print("Plan: ", plan)
+        # print("Goal: ", goal.grounded_predicates)
+        # print("State: ", state.grounded_predicates)
+        # print("Plan: ", plan)
         return RewardMachine(plan, actions=self.actions, goal=goal, initial_state=state)
 
     def hash_state(self, state):
