@@ -14,7 +14,7 @@ applicator = {'MOVE':['Reach'],
 
 pddl_path = "./PDDL_files"
 
-def call_planner(domain, problem, structure="pddl", pddl_dir=pddl_path):
+def call_planner(domain, problem, structure="pddl", pddl_dir=pddl_path, verbose=1):
     '''
         Given a domain and a problem file
         This function return the ffmetric Planner output.
@@ -38,7 +38,10 @@ def call_planner(domain, problem, structure="pddl", pddl_dir=pddl_path):
             # Remove empty lines
             output = os.linesep.join([s for s in output.splitlines() if s])
         except Exception as e:
-            print("The planner failed because of: {}.\nThe output of the planner was:\n{}".format(e, output))
+            if verbose:
+                print("The planner failed because of: {}.\nThe output of the planner was:\n{}".format(e, output))
+            if "goal can be simplified to TRUE" in output:
+                return True, False
 
         plan, game_action_set = _output_to_plan(output, structure=structure)
         return plan, game_action_set

@@ -227,7 +227,7 @@ def learn_policy(args, env, eval_env, name, policy=None, icm=None):
 
 def load_policy(args, env, path):
     # Load the model
-    model = SAC.load(path, env=env, learning_rate=args.lr, tensorboard_log=args.logdir, seed=args.seed)
+    model = SAC.load(path, env=env, learning_rate=args.lr, tensorboard_log=args.logdir, seed=args.seed, custom_objects={'observation_space': env.observation_space, 'action_space': env.action_space})
     # Load the replay buffer
     #model.load_replay_buffer(os.path.join(args.bufferdir, args.task + '_sac'))
     return model
@@ -481,7 +481,7 @@ if __name__ == "__main__":
         elif args.prm_her:
             actions = []
             print("Actions: ", [action._to_pddl() for action in actions])
-            task_goal = {"at(can,drop)":1,}
+            task_goal = {"at(can,drop)":1, "grasped(can)":True,}
             detector = RoboSuite_PickPlace_Detector(env, grid_size=200)
             env = HERPlanWrapper(env, task_goal=task_goal, actions=actions, detector=detector, num_timesteps=args.timesteps, pddl_path=args.pddldir)
             eval_env = HERPlanWrapper(eval_env, task_goal=task_goal, actions=actions, detector=detector, num_timesteps=args.timesteps, pddl_path=args.pddldir)
