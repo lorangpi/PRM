@@ -356,6 +356,8 @@ class ReachWrapper(gym.Wrapper):
         info['is_success'] = condition
         #if condition:
         #    print("Success!")
+
+        terminated = condition or terminated
         
         return obs, reward, terminated, truncated, info
 
