@@ -55,13 +55,14 @@ class RewardMachine:
     def get_reward(self, state):
         # If the agent is not following a plan, return the total reward if the goal is satisfied
         if self.plan == False:
-            if state.satisfies(self.goal):
-                return self.total_reward
-            else:
-                return -1
-        if state.satisfies(self.goal):
-                #print("Goal Reached: Reward = ", self.total_reward)
-                return self.total_reward
+            # if state.satisfies(self.goal):
+            #     return self.total_reward
+            # else:
+            #     return -1
+            return -1
+        #if state.satisfies(self.goal):
+        #        #print("Goal Reached: Reward = ", self.total_reward)
+        #        return self.total_reward
         # Check if all predicates in the next state in the label sequence are met in the current state
         if self.state_sequence is not None:
             for i in range(self.current_state_index, len(self.state_sequence)):
