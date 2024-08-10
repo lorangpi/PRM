@@ -247,6 +247,7 @@ if __name__ == "__main__":
     parser.add_argument('--seed', type=int, default=0, help='Random seed')
     parser.add_argument('--dense', action='store_true', help='Use dense reward')
     parser.add_argument('--icm', action='store_true', help='Use ICM')
+    parser.add_argument('--small_icm_ratio', action='store_true', help='Reduce ICMs ratio on reward')
     parser.add_argument('--prm', action='store_true', help='Use PRM')
     parser.add_argument('--prm_her', action='store_true', help='Use PRM with HER')
     parser.add_argument('--init_policy', type=str, default=None, help='Path to initial policy')
@@ -376,7 +377,10 @@ if __name__ == "__main__":
             # ICM
             if args.icm:
                 feature_dim = 32
-                icm = ICM(env, feature_dim, eta=10)
+                eta = 10
+                if args.small_icm_ratio:
+                    eta = 1
+                icm = ICM(env, feature_dim, eta=eta)
         else:
             print("Experiment not recognized. Please verify the name.")
             exit()
