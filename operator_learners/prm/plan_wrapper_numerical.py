@@ -185,8 +185,6 @@ class PlanWrapper(gym.Wrapper):
         #     self.memory_state_hash = self.hash_state(self.memory_state)
         #     replace_actions_in_domain(self.domain, self.actions)
         self.plan_counter += 1
-        print("Plan Counter: ", self.plan_counter)
-        print("Log: ", self.plan_counter_log)
         return obs, info
 
     def generate_reward_machine(self, state=None, goal=None):
