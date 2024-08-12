@@ -23,10 +23,10 @@ controller_config = suite.load_controller_config(default_controller='OSC_POSITIO
 env = suite.make(
     #"PickPlaceCan",
     #"PickPlaceCanNovelties",
-    "Elevated",
+    #"Elevated",
     #"Obstacle",
     #"Door",
-    #"Hole",
+    "Hole",
     #"Locked",
     #"Lightoff",
     robots="Kinova3",
@@ -48,33 +48,37 @@ device = Keyboard()
 env.viewer.add_keypress_callback(device.on_press)
 
 # Define the detector
-detector = RoboSuite_PickPlace_Detector(env)
+#detector = RoboSuite_PickPlace_Detector(env)
 #env = PlanWrapper(env, task_goal="(at can drop)", detector=detector)
 #Initialize device control
 device.start_control()
 
 # Load the model
-model = SAC.load("/home/lorangpi/PRM/operator_learners/results/prm_icm/sac_augmented_dense_False_seed_0/prm_new/Elevated/models/best_model.zip", env=env, custom_objects={'observation_space': env.observation_space, 'action_space': env.action_space})
+#model = SAC.load("/home/lorangpi/PRM/operator_learners/results/prm_icm/sac_augmented_dense_False_seed_0/prm_new/Elevated/models/best_model.zip", env=env, custom_objects={'observation_space': env.observation_space, 'action_space': env.action_space})
+model = SAC.load("/home/lorangpi/PRM/operator_learners/best_model.zip", env=env, custom_objects={'observation_space': env.observation_space, 'action_space': env.action_space})
 
 obs, _ = env.reset()
 
-for i in range(5000):
-    #action = env.action_space.sample()
-    action, _ = model.predict(obs, deterministic=True)
-    obs, reward, terminated, truncated, info = env.step(action)
-    print(reward)
-    env.render()
-    state = detector.get_groundings(as_dict=True, binary_to_float=True, return_distance=False)
-    #if not(state["grasped(can)"]):
-    #    print("FAILED - FAILED - FAILED - ")
-    #    break
-    #print(detector.get_groundings(as_dict=True, binary_to_float=True, return_distance=False))
-    if terminated or truncated or i == 4999:
-        env.close()
-        env.close_renderer()
-        #sys.exit()
-        #obs, _ = env.reset()
-        break
+for episode in range(10):
+    for i in range(1000):
+        #action = env.action_space.sample()
+        action, _ = model.predict(obs, deterministic=True)
+        obs, reward, terminated, truncated, info = env.step(action)
+        env.render()
+        state = detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=True, as_grid=True)
+        if i % 100 == 0:
+            print(state, reward)
+        #print(state)
+        #if not(state["grasped(can)"]):
+        #    print("FAILED - FAILED - FAILED - ")
+        #    break
+        #print(detector.get_groundings(as_dict=True, binary_to_float=True, return_distance=False))
+        if terminated or truncated or i == 499:
+            env.reset()
+            #env.close_renderer()
+            #sys.exit()
+            #obs, _ = env.reset()
+            break
 
 start = True
 

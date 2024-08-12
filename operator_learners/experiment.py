@@ -281,10 +281,6 @@ if __name__ == "__main__":
         f.write(str(args))
         f.close()
 
-    # Delte logs if they already exist
-    if os.path.isfile(os.path.join(args.experiment_dir, 'logs', 'results_eval.csv')):
-        os.remove(os.path.join(args.experiment_dir, 'logs', 'results_eval.csv'))
-
     # Define the list of novelties
     list_of_novelties = ["PickPlaceCanNovelties", "Hole", "Elevated", "Obstacle", "Locked", "Lightoff"]
     
@@ -294,6 +290,10 @@ if __name__ == "__main__":
         list_of_novelties = list_of_novelties[index:]
 
     for i in range(len(list_of_novelties)):
+        # Delte logs if they already exist
+        if os.path.isfile(os.path.join(args.experiment_dir, list_of_novelties[i], 'logs', 'results_eval.csv')):
+            os.remove(os.path.join(args.experiment_dir, list_of_novelties[i], 'logs', 'results_eval.csv'))
+
         # Create the directories
         args.logdir = os.path.join(args.experiment_dir, list_of_novelties[i], 'logs')
         args.modeldir = os.path.join(args.experiment_dir, list_of_novelties[i], 'models')

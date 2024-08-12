@@ -149,6 +149,8 @@ class PlanWrapper(gym.Wrapper):
         #print(state.grounded_predicates["at(can,drop)"])
         generated_reward = self.reward_machine.get_reward(state)
         reward = max(reward, generated_reward)
+        if not(state['grasped(can)']):
+            reward = -2
         #print("Reward: ", reward)
         return observation, reward, terminated, truncated, info
 
