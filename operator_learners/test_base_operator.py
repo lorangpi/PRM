@@ -11,7 +11,7 @@ from operator_wrapper import PickWrapper, ReachWrapper
 from detector import RoboSuite_PickPlace_Detector
 from prm.state import State
 #from HDDL.planner import *
-from prm.plan_wrapper import PlanWrapper
+from prm.plan_wrapper_numerical import PlanWrapper
 from HER_wrapper import HERWrapper
 from robosuite.devices import Keyboard
 from robosuite.utils.input_utils import input2action
@@ -22,8 +22,8 @@ controller_config = suite.load_controller_config(default_controller='OSC_POSITIO
 # Create the environment
 env = suite.make(
     #"PickPlaceCan",
-    "PickPlaceCanNovelties",
-    #"Elevated",
+    #"PickPlaceCanNovelties",
+    "Elevated",
     #"Obstacle",
     #"Door",
     #"Hole",
@@ -38,8 +38,11 @@ env = suite.make(
     render_camera="agentview",#"robot0_eye_in_hand", # Available "camera" names = ('frontview', 'birdview', 'agentview', 'robot0_robotview', 'robot0_eye_in_hand')
 )
 env = GymWrapper(env, keys=['robot0_proprio-state', 'object-state'])
-env = ReachWrapper(env, dense_reward=True, render_init=True)
-env = HERWrapper(env, symbolic_goal=False)
+env = ReachWrapper(env, dense_reward=False, augmented_obs=True)
+task_goal = {"at(can,drop)":1, "grasped(can)":True,}
+detector = RoboSuite_PickPlace_Detector(env, grid_size=200)
+env = PlanWrapper(env, task_goal=task_goal, actions=[], detector=detector, num_timesteps=10000000)
+#env = HERWrapper(env, symbolic_goal=False)
 
 device = Keyboard()
 env.viewer.add_keypress_callback(device.on_press)
@@ -51,8 +54,7 @@ detector = RoboSuite_PickPlace_Detector(env)
 device.start_control()
 
 # Load the model
-#model = SAC.load("/home/lorangpi/HyGOAL/operator_learners/models/sac/best_model.zip")
-model = SAC.load("/home/lorangpi/HyGOAL/operator_learners/models/ltl/base/best_model.zip", env=env)
+model = SAC.load("/home/lorangpi/PRM/operator_learners/results/prm_icm/sac_augmented_dense_False_seed_0/prm_new/Elevated/models/best_model.zip", env=env, custom_objects={'observation_space': env.observation_space, 'action_space': env.action_space})
 
 obs, _ = env.reset()
 
@@ -60,7 +62,12 @@ for i in range(5000):
     #action = env.action_space.sample()
     action, _ = model.predict(obs, deterministic=True)
     obs, reward, terminated, truncated, info = env.step(action)
+    print(reward)
     env.render()
+    state = detector.get_groundings(as_dict=True, binary_to_float=True, return_distance=False)
+    #if not(state["grasped(can)"]):
+    #    print("FAILED - FAILED - FAILED - ")
+    #    break
     #print(detector.get_groundings(as_dict=True, binary_to_float=True, return_distance=False))
     if terminated or truncated or i == 4999:
         env.close()

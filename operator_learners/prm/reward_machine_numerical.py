@@ -154,8 +154,11 @@ class RewardMachine:
             # Apply the action to the current state
             current_state, track_predicates = self.apply_action(current_state, track_predicates, grounded_action)
 
-            # Add the next state to the state sequence
-            state_sequence.append(current_state)
+            if '(not (grasped can ))' in current_state._to_pddl():
+                pass
+            else:
+                # Add the next state to the state sequence
+                state_sequence.append(current_state)
 
         # Return the state sequence
         #print("State Sequence = ", state_sequence)

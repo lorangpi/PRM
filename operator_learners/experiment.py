@@ -119,6 +119,7 @@ class CustomEvalCallback(EvalCallback):
             # Save the results in a csv file located in the second to last directory of log_path
             # Split the log_path to get the second to last directory
             csv_path = os.path.split(self.log_path)[0]
+            # Delete results_eval.csv if it already exists
             with open(os.path.join(csv_path, 'results_eval.csv'), 'a') as f:
                 f.write("{},{},{},{}\n".format(self.num_timesteps, success_rate, mean_reward, mean_ep_length))
                 f.close()
@@ -279,6 +280,10 @@ if __name__ == "__main__":
     with open(os.path.join(args.experiment_dir, 'args.txt'), 'w') as f:
         f.write(str(args))
         f.close()
+
+    # Delte logs if they already exist
+    if os.path.isfile(os.path.join(args.experiment_dir, 'logs', 'results_eval.csv')):
+        os.remove(os.path.join(args.experiment_dir, 'logs', 'results_eval.csv'))
 
     # Define the list of novelties
     list_of_novelties = ["PickPlaceCanNovelties", "Hole", "Elevated", "Obstacle", "Locked", "Lightoff"]
