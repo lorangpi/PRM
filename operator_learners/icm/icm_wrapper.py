@@ -16,7 +16,6 @@ class ICMWrapper(gym.Wrapper):
     def step(self, action):
         next_observation, extrinsic_reward, terminated, truncated, info = self.env.step(action)
 
-        
         next_observation_icm = next_observation['observation'] if type(next_observation) is dict else next_observation
 
         # Compute the intrinsic reward

@@ -484,13 +484,19 @@ if __name__ == "__main__":
             #replace_actions_in_domain("./PDDL_files/domain_numerical.pddl", actions)
             #task_goal = State(RoboSuite_PickPlace_Detector(env), {"at(can,drop)":True, "picked_up(can)":False,})
             #task_goal = {"at(can,drop)":0, "grasped(can)":False,}
-            task_goal = {"at(can,drop)":1, "grasped(can)":True,}
+            if list_of_novelties[i] == "Locked":
+                task_goal = {"at(can,drop)":1, "grasped(can)":True, "locked(door)":False}
+            else:
+                task_goal = {"at(can,drop)":1, "grasped(can)":True,}
             detector = RoboSuite_PickPlace_Detector(env, grid_size=200)
             env = PlanWrapper(env, task_goal=task_goal, actions=actions, detector=detector, num_timesteps=args.timesteps, pddl_path=args.pddldir)
         elif args.prm_her:
             actions = []
             print("Actions: ", [action._to_pddl() for action in actions])
-            task_goal = {"at(can,drop)":1, "grasped(can)":True,}
+            if list_of_novelties[i] == "Locked":
+                task_goal = {"at(can,drop)":1, "grasped(can)":True, "locked(door)":False}
+            else:
+                task_goal = {"at(can,drop)":1, "grasped(can)":True,}
             detector = RoboSuite_PickPlace_Detector(env, grid_size=200)
             env = HERPlanWrapper(env, task_goal=task_goal, actions=actions, detector=detector, num_timesteps=args.timesteps, pddl_path=args.pddldir)
             eval_env = HERPlanWrapper(eval_env, task_goal=task_goal, actions=actions, detector=detector, num_timesteps=args.timesteps, pddl_path=args.pddldir)

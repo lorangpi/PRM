@@ -146,7 +146,6 @@ class PlanWrapper(gym.Wrapper):
         observation, reward, terminated, truncated, info = self.env.step(action)
         self.update_actions_goals()
         state = State(self.detector, numerical=True)
-        #print(state.grounded_predicates["at(can,drop)"])
         generated_reward = self.reward_machine.get_reward(state)
         reward = max(reward, generated_reward)
         if not(state.grounded_predicates['grasped(can)']):
@@ -188,6 +187,7 @@ class PlanWrapper(gym.Wrapper):
         #     self.memory_state_hash = self.hash_state(self.memory_state)
         #     replace_actions_in_domain(self.domain, self.actions)
         self.plan_counter += 1
+        #print("Plan Counter: ", self.plan_counter)
         return obs, info
 
     def generate_reward_machine(self, state=None, goal=None):
