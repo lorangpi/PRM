@@ -50,7 +50,7 @@ class Action:
             other_ground_with_types = other.ground_action(action_string=other_grounding)
             # Compare preconditions and effects
             equal = self_ground_with_types.preconditions == other_ground_with_types.preconditions
-            # equal = equal and self.effects == other.effects
+            equal = equal and self.effects == other.effects
             
             # Compare numerical_effects, ignoring 'total-cost'
             #self_numerical_effects = {k: v for k, v in self.numerical_effects.items() if k != 'total-cost'}
@@ -439,13 +439,14 @@ def numerical_operator_learner(s1, s2, type_mapping, predicates_type, name=None,
         elif predicates_type[predicate_name] == 'bool':
             if predicate not in s1 or s1[predicate] != value:
                 objects = extract_objects_from_predicate(predicate)
+                parametrized_predicate = predicate
                 for obj in objects:
                     if obj_id[obj] is None:
                         obj_id[obj] = type_mapping[obj] + str(type_id[type_mapping[obj]])
                         type_id[type_mapping[obj]] += 1
                     #parameters.extend([(obj_id[obj], type_mapping[obj])])
                     parametrized_predicate = replace_whole_word(predicate, obj, '?' + obj_id[obj])
-                    effects[parametrized_predicate] = bool(value)
+                effects[parametrized_predicate] = bool(value)
 
     parameters = list(set(parameters))  # remove duplicates
 

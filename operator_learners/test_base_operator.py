@@ -15,7 +15,7 @@ from prm.plan_wrapper_numerical import PlanWrapper
 from HER_wrapper import HERWrapper
 from robosuite.devices import Keyboard
 from robosuite.utils.input_utils import input2action
-
+from prm.action import replace_actions_in_domain, numerical_operator_learner, update_action_cost, merge_actions, split_action #load_action_from_file, restrict_action,
 
 controller_config = suite.load_controller_config(default_controller='OSC_POSITION')
 
@@ -26,9 +26,9 @@ env = suite.make(
     #"Elevated",
     #"Obstacle",
     #"Door",
-    "Hole",
+    #"Hole",
     #"Locked",
-    #"Lightoff",
+    "Lightoff",
     robots="Kinova3",
     #robots="Fetch",
     controller_configs=controller_config,
@@ -59,29 +59,29 @@ model = SAC.load("/home/lorangpi/PRM/operator_learners/best_model.zip", env=env,
 
 obs, _ = env.reset()
 
-for episode in range(10):
-    for i in range(1000):
-        #action = env.action_space.sample()
-        action, _ = model.predict(obs, deterministic=True)
-        obs, reward, terminated, truncated, info = env.step(action)
-        env.render()
-        state = detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=True, as_grid=True)
-        if i % 100 == 0:
-            print(state, reward)
-        #print(state)
-        #if not(state["grasped(can)"]):
-        #    print("FAILED - FAILED - FAILED - ")
-        #    break
-        #print(detector.get_groundings(as_dict=True, binary_to_float=True, return_distance=False))
-        if terminated or truncated or i == 499:
-            env.reset()
-            #env.close_renderer()
-            #sys.exit()
-            #obs, _ = env.reset()
-            break
+# for episode in range(10):
+#     for i in range(1000):
+#         #action = env.action_space.sample()
+#         action, _ = model.predict(obs, deterministic=True)
+#         obs, reward, terminated, truncated, info = env.step(action)
+#         env.render()
+#         state = detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=True, as_grid=True)
+#         if i % 100 == 0:
+#             print(state, reward)
+#         #print(state)
+#         #if not(state["grasped(can)"]):
+#         #    print("FAILED - FAILED - FAILED - ")
+#         #    break
+#         #print(detector.get_groundings(as_dict=True, binary_to_float=True, return_distance=False))
+#         if terminated or truncated or i == 499:
+#             env.reset()
+#             #env.close_renderer()
+#             #sys.exit()
+#             #obs, _ = env.reset()
+#             break
 
 start = True
-
+actions = []
 while True:
     # Set active robot
     active_robot = env.robots[0]
@@ -118,24 +118,74 @@ while True:
         obs, reward, terminated, truncated, info = env.step(action)
     except:
         obs, reward, done, info = env.step(action)
-    
-    if start:
-        #state = detector.get_groundings(as_dict=True, binary_to_float=True, return_distance=False)
-        state = State(detector)
-        generate_pddls(state, "(at can drop)")
-        plan, game_action_set = call_planner("domain", "problem") # get a plan
-        print(plan)
-        #detector.display_state(state)
-        start = False
-    
-    new_state = State(detector)#detector.get_groundings(as_dict=True, binary_to_float=True, return_distance=False)
+
+    state = State(detector, numerical=True)
+
+    # if start:
+    #     #state = detector.get_groundings(as_dict=True, binary_to_float=True, return_distance=False)
+    #     state = State(detector)
+    #     generate_pddls(state, "(at can drop)")
+    #     plan, game_action_set = call_planner("domain", "problem") # get a plan
+    #     print(plan)
+    #     #detector.display_state(state)
+    #     start = False
+
+    if env.light_on:
+
+        learned_action = numerical_operator_learner(new_state.grounded_predicates, state.grounded_predicates, detector.obj_types, predicates_type=detector.predicate_type, name="a")
+        learned_action = update_action_cost(learned_action, cost=1)
+        known_action = False
+        for action in actions:
+            if learned_action == action:
+                known_action = True
+        if learned_action.effects != {} or learned_action.numerical_effects != {} or len(learned_action.function_effects.keys()) > 1 and not known_action:
+            print("State: ", state)
+            print("Learned Action: ", learned_action._to_pddl())
+            learned_actions_list = split_action(learned_action)
+            for learned_action in learned_actions_list:
+                # Check if the learned action is not equal to any of the actions in the set of actions
+                print("Split Action: ", learned_action._to_pddl())
+                exist = False
+                for action in actions:
+                    if learned_action == action:
+                        action._cheaper_cost_(learned_action)
+                        print("Action Exist: ", action._to_pddl())
+                        exist = True
+                        continue
+                    # Test is the action already has the same effects, then keep the one with the least preconditions 
+                    # effects, numerical_effects ad functions_effects are dictionnary
+                    elif learned_action._same_effects_(action):
+                        merged_action = merge_actions(learned_action, action)
+                        if merged_action is not False:
+                            merged_action._is_weaker_(action)
+                            merged_action.name = action.name
+                            actions.remove(action)
+                            actions.append(merged_action)
+                            print("Action Merged: ", merged_action._to_pddl())
+                            exist = True
+                        elif learned_action._is_weaker_(action):
+                            actions.remove(action)
+                            learned_action.name = action.name
+                            actions.append(learned_action)
+                            print("Action Replaced: ", learned_action._to_pddl())
+                            exist = True
+                        continue
+                if not exist:
+                    #print("NAME ", learned_action.name)
+                    #print("EFFECTS: ", learned_action.effects)
+                    #print("NUM EFFECTS: ", learned_action.numerical_effects)
+                    #print("F EFFECTS: ", learned_action.function_effects)
+                    #print("PRE: ", learned_action.preconditions)
+                    #print()
+                    actions.append(learned_action)
+            for action in actions:
+                print("ACTION LIST")
+                print(action._to_pddl())
+                print()
+    new_state = State(detector, numerical=True)#detector.get_groundings(as_dict=True, binary_to_float=True, return_distance=False)
     #print("State: ", state)
     #print("New State: ", new_state)
     #print("")
-    difference = new_state.compare(state)
-    if difference != {}:
-        print("Difference: ", difference)
-        state = new_state
-
+  
     #print("Obs: {}\n\n".format(obs))
     env.render()
