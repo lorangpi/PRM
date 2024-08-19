@@ -47,6 +47,7 @@ class RoboSuite_PickPlace_Detector:
         self.shift = {"at": 1.0, "at_gripper": 1.0, "grasped": 1.0, "picked_up": 1.0, "dropped_off": 1.0, "open": 1.0, "door_locked": 1.0, "over": 1.0, "at_grab_level": 1.0, "door_collision": 1.0}
         self.predicate_type = {"at": "num", "at_gripper": "num", "grasped": "bool", "picked_up": "bool", "dropped_off": "bool", "open": "num", "door_locked": "bool", "over": "num", "at_grab_level": "num", "door_collision": "bool", "light_off": "bool", "locked": "bool", "open_gripper": "num"}
         self.useful_predicates = ["at", "at_gripper", "grasped", "open", "locked", "light_off", "open_gripper"]
+        self.object_generalization = {'can': True, 'door': False, 'pick': True, 'drop': True, 'activate': False, 'lightswitch': False, 'gripper': True}
 
     def get_ranges(self, space_dict):
         ranges = []

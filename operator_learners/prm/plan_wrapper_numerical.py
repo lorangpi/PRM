@@ -64,7 +64,7 @@ class PlanWrapper(gym.Wrapper):
             state_hash = state.__hash__()
             if state_hash + self.memory_state_hash not in self.state_transitions_hashes:
                 self.state_transitions_hashes.append(state_hash + self.memory_state_hash)
-                learned_action = numerical_operator_learner(self.memory_state.grounded_predicates, state.grounded_predicates, self.detector.obj_types, predicates_type=self.detector.predicate_type, name="a" + str(self.action_counter))
+                learned_action = numerical_operator_learner(self.memory_state.grounded_predicates, state.grounded_predicates, self.detector.obj_types, predicates_type=self.detector.predicate_type, object_generalization=self.detector.object_generalization, name="a" + str(self.action_counter))
                 # add 3 cost for each effect in the action
                 action_cost = self.transition_cost + 5 * len(learned_action.effects) + 5 * len(learned_action.numerical_effects) + 5 * len(learned_action.function_effects)
                 learned_action = update_action_cost(learned_action, cost=action_cost)
@@ -146,7 +146,7 @@ class PlanWrapper(gym.Wrapper):
         observation, reward, terminated, truncated, info = self.env.step(action)
         self.update_actions_goals()
         state = State(self.detector, numerical=True)
-        generated_reward = self.reward_machine.get_reward(state)
+        generated_reward = self.reward_machine.get_reward2(state)
         reward = max(reward, generated_reward)
         if not(state.grounded_predicates['grasped(can)']):
             reward = -2
@@ -168,16 +168,16 @@ class PlanWrapper(gym.Wrapper):
                 self.desired_goal = State(self.detector, init_predicates=np.random.choice(self.desired_goals), numerical=True)
                 self.filter_actions()
                 replace_actions_in_domain(self.base_domain, self.new_domain, self.actions)
-                self.reward_machine = self.generate_reward_machine()
                 # Pop the first element of the plan counter log
                 self.plan_counter_log.pop(0)
+                self.reward_machine = self.generate_reward_machine()
         else:
             if self.plan_counter == 0 or self.plan_counter % self.reset_plan == 0:
                 self.desired_goal = State(self.detector, init_predicates=np.random.choice(self.desired_goals), numerical=True)
                 self.filter_actions()
                 replace_actions_in_domain(self.base_domain, self.new_domain, self.actions)
                 self.reward_machine = self.generate_reward_machine()
-        self.reward_machine.reset_reward()
+        #self.reward_machine.reset_reward()
         # Randomly choose a desired goal from the set of desired goals every each 5 resets
         # if self.plan_counter % self.reset_plan == 0 or self.plan_counter == 0:
         #     self.desired_goal = State(self.detector, np.random.choice(self.desired_goals), numerical=True)

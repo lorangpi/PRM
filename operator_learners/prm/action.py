@@ -375,7 +375,7 @@ def operator_learner_minimal_effects_grounded_preconditions(predicates_t, predic
     return Action(parameters, preconditions, effects, name=name)
 
 
-def numerical_operator_learner(s1, s2, type_mapping, predicates_type, name=None, negatives=False):
+def numerical_operator_learner(s1, s2, type_mapping, predicates_type, object_generalization, name=None, negatives=False):
     parameters = []
     preconditions = {}
     effects = {}
@@ -392,8 +392,11 @@ def numerical_operator_learner(s1, s2, type_mapping, predicates_type, name=None,
         parametrized_predicate = predicate
         for obj in objects:
             if obj_id[obj] is None:
-                obj_id[obj] = type_mapping[obj] + str(type_id[type_mapping[obj]])
-                type_id[type_mapping[obj]] += 1
+                if object_generalization[obj]:
+                    obj_id[obj] = type_mapping[obj] + str(type_id[type_mapping[obj]])
+                    type_id[type_mapping[obj]] += 1
+                else:
+                    obj_id[obj] = obj
             parameters.extend([(obj_id[obj], type_mapping[obj])])
             parametrized_predicate = replace_whole_word(parametrized_predicate, obj, '?' + obj_id[obj])
         if predicates_type[predicate_name] == 'num':
@@ -406,7 +409,7 @@ def numerical_operator_learner(s1, s2, type_mapping, predicates_type, name=None,
 
     # If any bool predicate in the precondition, remove all numerical preconditions that do no evaluate to 0
     if any([predicates_type[predicate.split('(')[0]] == 'bool' for predicate in preconditions.keys()]):
-        numerical_preconditions = {k: v for k, v in numerical_preconditions.items() if v <= 1}
+        numerical_preconditions = {k: v for k, v in numerical_preconditions.items() if v <= 3}
 
     for predicate, value in s2.items():
         predicate_name = predicate.split('(')[0]
@@ -417,8 +420,11 @@ def numerical_operator_learner(s1, s2, type_mapping, predicates_type, name=None,
                 parametrized_predicate = predicate
                 for obj in objects:
                     if obj_id[obj] is None:
-                        obj_id[obj] = type_mapping[obj] + str(type_id[type_mapping[obj]])
-                        type_id[type_mapping[obj]] += 1
+                        if object_generalization[obj]:
+                            obj_id[obj] = type_mapping[obj] + str(type_id[type_mapping[obj]])
+                            type_id[type_mapping[obj]] += 1
+                        else:
+                            obj_id[obj] = obj
                     #parameters.extend([(obj_id[obj], type_mapping[obj])])
                     parametrized_predicate = replace_whole_word(parametrized_predicate, obj, '?' + obj_id[obj])
                     # Check if all objects in the predicate have been parametrized (with a ?)
@@ -431,8 +437,11 @@ def numerical_operator_learner(s1, s2, type_mapping, predicates_type, name=None,
                 parametrized_predicate = predicate
                 for obj in objects:
                     if obj_id[obj] is None:
-                        obj_id[obj] = type_mapping[obj] + str(type_id[type_mapping[obj]])
-                        type_id[type_mapping[obj]] += 1
+                        if object_generalization[obj]:
+                            obj_id[obj] = type_mapping[obj] + str(type_id[type_mapping[obj]])
+                            type_id[type_mapping[obj]] += 1
+                        else:
+                            obj_id[obj] = obj
                     #parameters.extend([(obj_id[obj], type_mapping[obj])])
                     parametrized_predicate = replace_whole_word(parametrized_predicate, obj, '?' + obj_id[obj])
                     numerical_effects[parametrized_predicate] = value
@@ -442,8 +451,11 @@ def numerical_operator_learner(s1, s2, type_mapping, predicates_type, name=None,
                 parametrized_predicate = predicate
                 for obj in objects:
                     if obj_id[obj] is None:
-                        obj_id[obj] = type_mapping[obj] + str(type_id[type_mapping[obj]])
-                        type_id[type_mapping[obj]] += 1
+                        if object_generalization[obj]:
+                            obj_id[obj] = type_mapping[obj] + str(type_id[type_mapping[obj]])
+                            type_id[type_mapping[obj]] += 1
+                        else:
+                            obj_id[obj] = obj
                     #parameters.extend([(obj_id[obj], type_mapping[obj])])
                     parametrized_predicate = replace_whole_word(predicate, obj, '?' + obj_id[obj])
                 effects[parametrized_predicate] = bool(value)
@@ -452,7 +464,7 @@ def numerical_operator_learner(s1, s2, type_mapping, predicates_type, name=None,
 
     return Action(parameters, preconditions, effects, numerical_preconditions, numerical_effects, function_effects, name=name)
 
-def merge_actions(a0, a1):
+def merge_actions(a0, a1, ray_of_merge=3):
     a0_function_effects = {k: v for k, v in a0.function_effects.items() if k != 'total-cost'}
     a1_function_effects = {k: v for k, v in a1.function_effects.items() if k != 'total-cost'}
     # Check if the actions are of the same type and have the same effects
@@ -469,7 +481,8 @@ def merge_actions(a0, a1):
         else:
             # Remove precondition that are not in both actions or that have different values
             merged_preconditions = {k: v for k, v in a0.preconditions.items() if k in a1.preconditions and a1.preconditions[k] == v}
-            merged_numerical_preconditions = {k: v for k, v in a0.numerical_preconditions.items() if k in a1.numerical_preconditions and a1.numerical_preconditions[k] == v}
+            merged_numerical_preconditions = {k: v for k, v in a0.numerical_preconditions.items() if k in a1.numerical_preconditions and a1.numerical_preconditions[k] - v <= ray_of_merge}
+
             #merged_preconditions = {**a0.preconditions, **a1.preconditions}
             #merged_numerical_preconditions = {**a0.numerical_preconditions, **a1.numerical_preconditions}
         merged_action = Action(a0.parameters, merged_preconditions, a0.effects, merged_numerical_preconditions, a0.numerical_effects, a0.function_effects, name=a0.name)
@@ -488,7 +501,7 @@ def split_action(action):
         if effect == 'total-cost':
             continue
         # Create a copy of the action
-        new_action = Action(action.parameters.copy(), action.preconditions.copy(), {}, name=action.name + '_' + str(counter))
+        new_action = Action(action.parameters.copy(), action.preconditions.copy(), {}, numerical_preconditions=action.numerical_preconditions.copy(), name=action.name + '_' + str(counter))
         # Add the effect to the new action
         new_action.function_effects = {effect: value, 'total-cost': cost}
         # Add the new action to the list of actions
@@ -496,7 +509,7 @@ def split_action(action):
         counter += 1
     for effect, value in action.numerical_effects.items():
         # Create a copy of the action
-        new_action = Action(action.parameters.copy(), action.preconditions.copy(), {}, function_effects={'total-cost':cost}, name=action.name + '_' + str(counter))
+        new_action = Action(action.parameters.copy(), action.preconditions.copy(), {}, numerical_preconditions=action.numerical_preconditions.copy(), function_effects={'total-cost':cost}, name=action.name + '_' + str(counter))
         # Add the effect to the new action
         new_action.numerical_effects = {effect: value}
         # Add the new action to the list of actions
@@ -504,7 +517,7 @@ def split_action(action):
         counter += 1
     for effect, value in action.effects.items():
         # Create a copy of the action
-        new_action = Action(action.parameters.copy(), action.preconditions.copy(), {}, function_effects={'total-cost':cost}, name=action.name + '_' + str(counter))
+        new_action = Action(action.parameters.copy(), action.preconditions.copy(), {}, numerical_preconditions=action.numerical_preconditions.copy(), function_effects={'total-cost':cost}, name=action.name + '_' + str(counter))
         # Add the effect to the new action
         new_action.effects = {effect: value}
         # Add the new action to the list of actions
