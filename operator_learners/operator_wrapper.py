@@ -230,11 +230,11 @@ class ReachWrapper(gym.Wrapper):
         # Reset the environment for the reach task
         success = False
         buffer_light_on = False
-        if not(self.env.light_on):
-            # Temporally turn on the light to reset the environment
-            self.env.light_on = True
-            buffer_light_on = True
         while not success:
+            if not(self.env.light_on):
+                # Temporally turn on the light to reset the environment
+                self.env.light_on = True
+                buffer_light_on = True
             try:
                 obs, info = self.env.reset(seed=seed)
             except:
