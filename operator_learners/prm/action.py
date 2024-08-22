@@ -490,6 +490,7 @@ def numerical_operator_learner(s1, s2, constraint, type_mapping, predicates_type
 def merge_actions(a0, a1, ray_of_merge=3, constraint={"pre":{}, "eff":{}}):
     a0_function_effects = {k: v for k, v in a0.function_effects.items() if k != 'total-cost'}
     a1_function_effects = {k: v for k, v in a1.function_effects.items() if k != 'total-cost'}
+    merged_n_numerical_preconditions = {}
     # Check if the actions are of the same type and have the same effects
     if a0.effects == a1.effects and a0.numerical_effects == a1.numerical_effects and a0_function_effects==a1_function_effects:
         # Merge the preconditions
