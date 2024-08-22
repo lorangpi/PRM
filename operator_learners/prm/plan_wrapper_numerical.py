@@ -14,7 +14,7 @@ class PlanWrapper(gym.Wrapper):
     # Also during training, the planner is used to generate a plan to reach the goal state
     # If the plan is not empty, the current state as detected by the detector is added in the set of desired goals
 
-    def __init__(self, env, task_goal, actions, num_timesteps=None, detector=None, domain="domain_numerical", problem="problem_dummy", pddl_path="./PDDL_files/"):
+    def __init__(self, env, task_goal, constraint, actions, num_timesteps=None, detector=None, domain="domain_numerical", problem="problem_dummy", pddl_path="./PDDL_files/"):
         super().__init__(env)
         self.env = env
         if detector is None:
@@ -37,6 +37,7 @@ class PlanWrapper(gym.Wrapper):
         # Goal and state hashing lists initialization
         self.desired_goals = [task_goal]
         self.task_goal = task_goal
+        self.constraint = constraint
         self.no_path_set_hashes = []
         self.goal_set_hashes = []
         self.state_transitions_hashes = []
@@ -50,7 +51,7 @@ class PlanWrapper(gym.Wrapper):
         #else:
         #    self.actions = actions
         self.actions = actions
-        self.action_counter = len(self.actions)    
+        self.action_counter = len(self.actions)
         print("Actions: ", [action.name for action in self.actions])
         self.reset()
 
@@ -64,7 +65,7 @@ class PlanWrapper(gym.Wrapper):
             state_hash = state.__hash__()
             if state_hash + self.memory_state_hash not in self.state_transitions_hashes:
                 self.state_transitions_hashes.append(state_hash + self.memory_state_hash)
-                learned_action = numerical_operator_learner(self.memory_state.grounded_predicates, state.grounded_predicates, self.detector.obj_types, predicates_type=self.detector.predicate_type, object_generalization=self.detector.object_generalization, name="a" + str(self.action_counter))
+                learned_action = numerical_operator_learner(self.memory_state.grounded_predicates, state.grounded_predicates, self.constraint, self.detector.obj_types, predicates_type=self.detector.predicate_type, object_generalization=self.detector.object_generalization, name="a" + str(self.action_counter))
                 # add 3 cost for each effect in the action
                 action_cost = self.transition_cost + 5 * len(learned_action.effects) + 5 * len(learned_action.numerical_effects) + 5 * len(learned_action.function_effects)
                 learned_action = update_action_cost(learned_action, cost=action_cost)
@@ -81,7 +82,7 @@ class PlanWrapper(gym.Wrapper):
                             # Test is the action already has the same effects, then keep the one with the least preconditions 
                             # effects, numerical_effects ad functions_effects are dictionnary
                             elif learned_action._same_effects_(action):
-                                merged_action = merge_actions(learned_action, action)
+                                merged_action = merge_actions(learned_action, action, constraint=self.constraint)
                                 if merged_action is not False:
                                     merged_action._is_weaker_(action)
                                     merged_action.name = action.name
@@ -132,7 +133,7 @@ class PlanWrapper(gym.Wrapper):
                     unique = False
                     break
                 elif action._same_effects_(new_action):
-                    merged_action = merge_actions(action, new_action)
+                    merged_action = merge_actions(action, new_action, constraint=self.constraint)
                     if merged_action is not False:
                         merged_action._is_weaker_(new_action)
                         merged_action.name = new_action.name

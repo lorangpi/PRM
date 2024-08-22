@@ -27,8 +27,8 @@ env = suite.make(
     #"Obstacle",
     #"Door",
     #"Hole",
-    #"Locked",
-    "Lightoff",
+    "Locked",
+    #"Lightoff",
     robots="Kinova3",
     #robots="Fetch",
     controller_configs=controller_config,
@@ -57,31 +57,34 @@ device.start_control()
 #model = SAC.load("/home/lorangpi/PRM/operator_learners/results/prm_icm/sac_augmented_dense_False_seed_0/prm_new/Elevated/models/best_model.zip", env=env, custom_objects={'observation_space': env.observation_space, 'action_space': env.action_space})
 model = SAC.load("/home/lorangpi/PRM/operator_learners/best_model.zip", env=env, custom_objects={'observation_space': env.observation_space, 'action_space': env.action_space})
 
+print("\nResetting environment\n")
 obs, _ = env.reset()
+print("Environment reset\n")
 
-# for episode in range(10):
-#     for i in range(1000):
-#         #action = env.action_space.sample()
-#         action, _ = model.predict(obs, deterministic=True)
-#         obs, reward, terminated, truncated, info = env.step(action)
-#         env.render()
-#         state = detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=True, as_grid=True)
-#         if i % 100 == 0:
-#             print(state, reward)
-#         #print(state)
-#         #if not(state["grasped(can)"]):
-#         #    print("FAILED - FAILED - FAILED - ")
-#         #    break
-#         #print(detector.get_groundings(as_dict=True, binary_to_float=True, return_distance=False))
-#         if terminated or truncated or i == 499:
-#             env.reset()
-#             #env.close_renderer()
-#             #sys.exit()
-#             #obs, _ = env.reset()
-#             break
+for episode in range(10):
+    for i in range(1000):
+        #action = env.action_space.sample()
+        action, _ = model.predict(obs, deterministic=True)
+        obs, reward, terminated, truncated, info = env.step(action)
+        env.render()
+        state = detector.get_groundings(as_dict=True, binary_to_float=False, return_distance=True, as_grid=True)
+        if i % 100 == 0:
+            print(state, reward)
+        #print(state)
+        #if not(state["grasped(can)"]):
+        #    print("FAILED - FAILED - FAILED - ")
+        #    break
+        #print(detector.get_groundings(as_dict=True, binary_to_float=True, return_distance=False))
+        if terminated or truncated or i == 499:
+            env.reset()
+            #env.close_renderer()
+            #sys.exit()
+            #obs, _ = env.reset()
+            break
 
 start = True
 actions = []
+state = State(detector, numerical=True)
 while True:
     # Set active robot
     active_robot = env.robots[0]
@@ -114,12 +117,14 @@ while True:
         action = action[: env.action_dim]
 
     # Step through the simulation and render
+    print("Step")
+    print("Action: ", action)
     try:
         obs, reward, terminated, truncated, info = env.step(action)
     except:
         obs, reward, done, info = env.step(action)
 
-    state = State(detector, numerical=True)
+    new_state = State(detector, numerical=True)
 
     # if start:
     #     #state = detector.get_groundings(as_dict=True, binary_to_float=True, return_distance=False)
@@ -130,9 +135,9 @@ while True:
     #     #detector.display_state(state)
     #     start = False
 
+    """
     if env.light_on:
-
-        learned_action = numerical_operator_learner(new_state.grounded_predicates, state.grounded_predicates, detector.obj_types, predicates_type=detector.predicate_type, name="a")
+        learned_action = numerical_operator_learner(state.grounded_predicates, new_state.grounded_predicates, detector.obj_types, predicates_type=detector.predicate_type, object_generalization=detector.object_generalization, name="a")
         learned_action = update_action_cost(learned_action, cost=1)
         known_action = False
         for action in actions:
@@ -182,10 +187,11 @@ while True:
                 print("ACTION LIST")
                 print(action._to_pddl())
                 print()
-    new_state = State(detector, numerical=True)#detector.get_groundings(as_dict=True, binary_to_float=True, return_distance=False)
+    state = State(detector, numerical=True)#detector.get_groundings(as_dict=True, binary_to_float=True, return_distance=False)
     #print("State: ", state)
     #print("New State: ", new_state)
     #print("")
+    """
   
-    #print("Obs: {}\n\n".format(obs))
+    print("Obs: {}\n\n".format(obs))
     env.render()

@@ -133,7 +133,7 @@ class RewardMachine:
         current_state = initial_state
         track_predicates = initial_state.grounded_predicates.copy()
 
-        """
+        #"""
         # Iterate over the actions in the plan
         for action_str in plan:
             # Extract the action name from the action string and convert it to lowercase
@@ -166,6 +166,7 @@ class RewardMachine:
         state9 = State(initial_state.detector, init_predicates={"at(can,drop)": 1})
 
         state_sequence = [state1, state2, state3, state4, state6, state7, state8, state9]
+        """
 
         # Return the state sequence
         #print("State Sequence = ", state_sequence)

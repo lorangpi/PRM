@@ -3,11 +3,12 @@ import re
 from collections import namedtuple
 
 class Action:
-    def __init__(self, parameters, preconditions, effects, numerical_preconditions=None, numerical_effects=None, function_effects=None, cost=None, name=None):
+    def __init__(self, parameters, preconditions, effects, numerical_preconditions=None, numerical_effects=None, function_effects=None, negative_numerical_preconditions=None ,cost=None, name=None):
         self.parameters = parameters
         self.preconditions = preconditions
         self.effects = effects
         self.numerical_preconditions = numerical_preconditions if numerical_preconditions is not None else {}
+        self.n_numerical_preconditions = negative_numerical_preconditions if negative_numerical_preconditions is not None else {}
         self.numerical_effects = numerical_effects if numerical_effects is not None else {}
         self.function_effects = function_effects if function_effects is not None else {}
         self.cost = cost
@@ -122,6 +123,10 @@ class Action:
             numerical_preconditions = ' '.join([f'(= ({predicate.replace(",", " ").replace("(", " ").replace(")", " ")}) {value})' for predicate, value in self.numerical_preconditions.items()])
         else:
             numerical_preconditions = ''
+        if self.n_numerical_preconditions != {}:
+            n_numerical_preconditions = ' '.join([f'(not (= ({predicate.replace(",", " ").replace("(", " ").replace(")", " ")}) {value}))' for predicate, value in self.n_numerical_preconditions.items()])
+        else:
+            n_numerical_preconditions = ''
         if self.numerical_effects != {}:
             numerical_effects = ' '.join([f'(= ({predicate.replace(",", " ").replace("(", " ").replace(")", " ")}) {value})' for predicate, value in self.numerical_effects.items()])
         else:
@@ -144,7 +149,7 @@ class Action:
         parameters = ' '.join([f'?{param} - {type}' for param, type in used_parameters])
 
 
-        return f'(:action {self.name}\n  :parameters ({parameters})\n  :precondition (and {preconditions} {numerical_preconditions})\n  :effect (and {effects} {function_effects} {numerical_effects}))\n'
+        return f'(:action {self.name}\n  :parameters ({parameters})\n  :precondition (and {preconditions} {numerical_preconditions} {n_numerical_preconditions})\n  :effect (and {effects} {function_effects} {numerical_effects}))\n'
 
     def ground_action(self, action_string):
         action_parts = action_string.split(' ')
@@ -375,15 +380,30 @@ def operator_learner_minimal_effects_grounded_preconditions(predicates_t, predic
     return Action(parameters, preconditions, effects, name=name)
 
 
-def numerical_operator_learner(s1, s2, type_mapping, predicates_type, object_generalization, name=None, negatives=False):
+def numerical_operator_learner(s1, s2, constraint, type_mapping, predicates_type, object_generalization, name=None, negatives=False):
     parameters = []
     preconditions = {}
     effects = {}
     numerical_preconditions = {}
+    negative_numerical_preconditions = {}
     numerical_effects = {}
     function_effects = {}
     type_id = {type: 0 for type in type_mapping.values()}
     obj_id = {obj: None for obj in type_mapping.keys()}
+
+    grounded_predicates = False
+    if constraint != {} and set(constraint["eff"].items()) <= set(s2.items()):
+        # Check if the constraint is satisfied in s2, which mean the agent found a path to the cosntraint from s1 specifically (grounded)
+        print("constraint is satisfied in s2")
+        grounded_predicates = True
+    elif constraint != {} and s2[list(constraint["eff"].keys())[0]] != s1[list(constraint["eff"].keys())[0]]:
+        # Check if there is a change in the value of the constraint key between the states, i.e., the effect of the action will account for it
+        # thus we need to put additional constraining preconditions
+        #preconditions[list(constraint.keys())[0]] = list(constraint.values())[0]
+        if predicates_type[list(constraint["eff"].keys())[0].split('(')[0]] == 'num':
+            negative_numerical_preconditions[list(constraint["pre"].keys())[0]] = list(constraint["pre"].values())[0]
+        else:
+            negative_numerical_preconditions[list(constraint["pre"].keys())[0]] = list(constraint["pre"].values())[0]
 
     for predicate, value in s1.items():
         predicate_name = predicate.split('(')[0]
@@ -392,13 +412,16 @@ def numerical_operator_learner(s1, s2, type_mapping, predicates_type, object_gen
         parametrized_predicate = predicate
         for obj in objects:
             if obj_id[obj] is None:
-                if object_generalization[obj]:
-                    obj_id[obj] = type_mapping[obj] + str(type_id[type_mapping[obj]])
+                if object_generalization[obj] and not grounded_predicates:
+                    obj_id[obj] = '?' + type_mapping[obj] + str(type_id[type_mapping[obj]])
                     type_id[type_mapping[obj]] += 1
                 else:
                     obj_id[obj] = obj
-            parameters.extend([(obj_id[obj], type_mapping[obj])])
-            parametrized_predicate = replace_whole_word(parametrized_predicate, obj, '?' + obj_id[obj])
+            if object_generalization[obj] and not grounded_predicates:
+                parameters.extend([(obj_id[obj].split('?')[1], type_mapping[obj])])
+            else:
+                parameters.extend([(obj_id[obj], type_mapping[obj])])
+            parametrized_predicate = replace_whole_word(parametrized_predicate, obj, obj_id[obj])
         if predicates_type[predicate_name] == 'num':
             numerical_preconditions[parametrized_predicate] = value
         elif predicates_type[predicate_name] == 'bool':
@@ -420,13 +443,13 @@ def numerical_operator_learner(s1, s2, type_mapping, predicates_type, object_gen
                 parametrized_predicate = predicate
                 for obj in objects:
                     if obj_id[obj] is None:
-                        if object_generalization[obj]:
-                            obj_id[obj] = type_mapping[obj] + str(type_id[type_mapping[obj]])
+                        if object_generalization[obj] and not grounded_predicates:
+                            obj_id[obj] = '?' + type_mapping[obj] + str(type_id[type_mapping[obj]])
                             type_id[type_mapping[obj]] += 1
                         else:
                             obj_id[obj] = obj
                     #parameters.extend([(obj_id[obj], type_mapping[obj])])
-                    parametrized_predicate = replace_whole_word(parametrized_predicate, obj, '?' + obj_id[obj])
+                    parametrized_predicate = replace_whole_word(parametrized_predicate, obj, obj_id[obj])
                     # Check if all objects in the predicate have been parametrized (with a ?)
                 change = value - s1[predicate]
                 if change != 0:
@@ -437,13 +460,13 @@ def numerical_operator_learner(s1, s2, type_mapping, predicates_type, object_gen
                 parametrized_predicate = predicate
                 for obj in objects:
                     if obj_id[obj] is None:
-                        if object_generalization[obj]:
-                            obj_id[obj] = type_mapping[obj] + str(type_id[type_mapping[obj]])
+                        if object_generalization[obj] and not grounded_predicates:
+                            obj_id[obj] = '?' + type_mapping[obj] + str(type_id[type_mapping[obj]])
                             type_id[type_mapping[obj]] += 1
                         else:
                             obj_id[obj] = obj
                     #parameters.extend([(obj_id[obj], type_mapping[obj])])
-                    parametrized_predicate = replace_whole_word(parametrized_predicate, obj, '?' + obj_id[obj])
+                    parametrized_predicate = replace_whole_word(parametrized_predicate, obj, obj_id[obj])
                     numerical_effects[parametrized_predicate] = value
         elif predicates_type[predicate_name] == 'bool':
             if predicate not in s1 or s1[predicate] != value:
@@ -451,20 +474,20 @@ def numerical_operator_learner(s1, s2, type_mapping, predicates_type, object_gen
                 parametrized_predicate = predicate
                 for obj in objects:
                     if obj_id[obj] is None:
-                        if object_generalization[obj]:
-                            obj_id[obj] = type_mapping[obj] + str(type_id[type_mapping[obj]])
+                        if object_generalization[obj] and not grounded_predicates:
+                            obj_id[obj] = '?' + type_mapping[obj] + str(type_id[type_mapping[obj]])
                             type_id[type_mapping[obj]] += 1
                         else:
                             obj_id[obj] = obj
                     #parameters.extend([(obj_id[obj], type_mapping[obj])])
-                    parametrized_predicate = replace_whole_word(predicate, obj, '?' + obj_id[obj])
+                    parametrized_predicate = replace_whole_word(predicate, obj, obj_id[obj])
                 effects[parametrized_predicate] = bool(value)
 
     parameters = list(set(parameters))  # remove duplicates
 
-    return Action(parameters, preconditions, effects, numerical_preconditions, numerical_effects, function_effects, name=name)
+    return Action(parameters, preconditions, effects, numerical_preconditions, numerical_effects, function_effects, negative_numerical_preconditions, name=name)
 
-def merge_actions(a0, a1, ray_of_merge=3):
+def merge_actions(a0, a1, ray_of_merge=3, constraint={"pre":{}, "eff":{}}):
     a0_function_effects = {k: v for k, v in a0.function_effects.items() if k != 'total-cost'}
     a1_function_effects = {k: v for k, v in a1.function_effects.items() if k != 'total-cost'}
     # Check if the actions are of the same type and have the same effects
@@ -482,15 +505,15 @@ def merge_actions(a0, a1, ray_of_merge=3):
             # Remove precondition that are not in both actions or that have different values
             merged_preconditions = {k: v for k, v in a0.preconditions.items() if k in a1.preconditions and a1.preconditions[k] == v}
             merged_numerical_preconditions = {k: v for k, v in a0.numerical_preconditions.items() if k in a1.numerical_preconditions and a1.numerical_preconditions[k] - v <= ray_of_merge}
-
+            merged_n_numerical_preconditions = {k: v for k, v in a0.n_numerical_preconditions.items() if k in a1.n_numerical_preconditions and (k in constraint["pre"] and constraint["pre"][k] == v)}
             #merged_preconditions = {**a0.preconditions, **a1.preconditions}
             #merged_numerical_preconditions = {**a0.numerical_preconditions, **a1.numerical_preconditions}
-        merged_action = Action(a0.parameters, merged_preconditions, a0.effects, merged_numerical_preconditions, a0.numerical_effects, a0.function_effects, name=a0.name)
+        merged_action = Action(a0.parameters, merged_preconditions, a0.effects, merged_numerical_preconditions, a0.numerical_effects, a0.function_effects, merged_n_numerical_preconditions, name=a0.name)
         return merged_action
     else:
         return False
 
-def split_action(action):
+def split_action(action, constraint={"pre":{}, "eff":{}}):
     # Split the action into a list of actions with one effect each
     # Create a list of actions to store the split actions 
     actions = []
@@ -501,7 +524,7 @@ def split_action(action):
         if effect == 'total-cost':
             continue
         # Create a copy of the action
-        new_action = Action(action.parameters.copy(), action.preconditions.copy(), {}, numerical_preconditions=action.numerical_preconditions.copy(), name=action.name + '_' + str(counter))
+        new_action = Action(action.parameters.copy(), action.preconditions.copy(), {}, numerical_preconditions=action.numerical_preconditions.copy(), negative_numerical_preconditions=action.n_numerical_preconditions ,name=action.name + '_' + str(counter))
         # Add the effect to the new action
         new_action.function_effects = {effect: value, 'total-cost': cost}
         # Add the new action to the list of actions
