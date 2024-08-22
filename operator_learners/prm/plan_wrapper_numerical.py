@@ -147,7 +147,7 @@ class PlanWrapper(gym.Wrapper):
         observation, reward, terminated, truncated, info = self.env.step(action)
         self.update_actions_goals()
         state = State(self.detector, numerical=True)
-        generated_reward = self.reward_machine.get_reward2(state)
+        generated_reward = self.reward_machine.get_reward(state)
         reward = max(reward, generated_reward)
         if not(state.grounded_predicates['grasped(can)']):
             reward = -2
