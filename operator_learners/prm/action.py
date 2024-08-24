@@ -3,7 +3,7 @@ import re
 from collections import namedtuple
 
 class Action:
-    def __init__(self, parameters, preconditions, effects, numerical_preconditions=None, numerical_effects=None, function_effects=None, negative_numerical_preconditions=None ,cost=None, name=None):
+    def __init__(self, parameters, preconditions, effects, numerical_preconditions=None, numerical_effects=None, function_effects=None, negative_numerical_preconditions=None, constraint=None ,cost=None, name=None):
         self.parameters = parameters
         self.preconditions = preconditions
         self.effects = effects
@@ -11,6 +11,7 @@ class Action:
         self.n_numerical_preconditions = negative_numerical_preconditions if negative_numerical_preconditions is not None else {}
         self.numerical_effects = numerical_effects if numerical_effects is not None else {}
         self.function_effects = function_effects if function_effects is not None else {}
+        self.constraint = constraint if constraint is not None else {}
         self.cost = cost
         self.name = name if name != None else "a0"
         self._to_pddl()
@@ -124,7 +125,7 @@ class Action:
         else:
             numerical_preconditions = ''
         if self.n_numerical_preconditions != {}:
-            n_numerical_preconditions = ' '.join([f'(not (= ({predicate.replace(",", " ").replace("(", " ").replace(")", " ")}) {value}))' for predicate, value in self.n_numerical_preconditions.items()])
+            n_numerical_preconditions = ' '.join([f'(or (> ({predicate.replace(",", " ").replace("(", " ").replace(")", " ")}) {value}) (< ({predicate.replace(",", " ").replace("(", " ").replace(")", " ")}) {value}))' for predicate, value in self.n_numerical_preconditions.items()])
         else:
             n_numerical_preconditions = ''
         if self.numerical_effects != {}:
@@ -138,7 +139,10 @@ class Action:
 
         # FOR NOW it does not account for numerical preconditions (so that the agent does not need to know location requirements for actions)
         if self.effects == {}:# and self.numerical_effects == {}:
-            numerical_preconditions = ''
+            if self.constraint != {} and self.constraint["pre"] != {} and self.n_numerical_preconditions == {}:
+                numerical_preconditions = f'(= ({list(self.constraint["pre"].keys())[0].replace(",", " ").replace("(", " ").replace(")", " ")}) {list(self.constraint["pre"].values())[0]})'
+            else:
+                numerical_preconditions = ''
         
         used_parameters = []
         for param, type in self.parameters:
@@ -396,7 +400,7 @@ def numerical_operator_learner(s1, s2, constraint, type_mapping, predicates_type
         # Check if the constraint is satisfied in s2, which mean the agent found a path to the cosntraint from s1 specifically (grounded)
         print("constraint is satisfied in s2")
         grounded_predicates = True
-    elif constraint != {} and s2[list(constraint["eff"].keys())[0]] != s1[list(constraint["eff"].keys())[0]]:
+    elif constraint != {}:# and s2[list(constraint["eff"].keys())[0]] != s1[list(constraint["eff"].keys())[0]]:
         # Check if there is a change in the value of the constraint key between the states, i.e., the effect of the action will account for it
         # thus we need to put additional constraining preconditions
         #preconditions[list(constraint.keys())[0]] = list(constraint.values())[0]
@@ -452,8 +456,16 @@ def numerical_operator_learner(s1, s2, constraint, type_mapping, predicates_type
                     parametrized_predicate = replace_whole_word(parametrized_predicate, obj, obj_id[obj])
                     # Check if all objects in the predicate have been parametrized (with a ?)
                 change = value - s1[predicate]
-                if change != 0:
-                    function_effects[parametrized_predicate] = change
+                if change != 0 and abs(change) < 2:
+                    # Check if no predicate which is parametrized with the same object types already exists in function_effects
+                    add_effect = True
+                    # for eff in function_effects.keys():
+                    #     eff_objects_types = [obj[:-1] for obj in extract_objects_from_predicate(eff)]
+                    #     if all([param[:-1] in eff_objects_types for param in parametrized_predicate.split('(')[1].split(')')[0].split(',')]):
+                    #         add_effect = False
+                    #         break
+                    if add_effect:
+                        function_effects[parametrized_predicate] = change
             else:
                 objects = extract_objects_from_predicate(predicate)
                 #parameters.extend([(obj, type_mapping[obj]) for obj in objects])
@@ -485,31 +497,39 @@ def numerical_operator_learner(s1, s2, constraint, type_mapping, predicates_type
 
     parameters = list(set(parameters))  # remove duplicates
 
-    return Action(parameters, preconditions, effects, numerical_preconditions, numerical_effects, function_effects, negative_numerical_preconditions, name=name)
+    return Action(parameters, preconditions, effects, numerical_preconditions, numerical_effects, function_effects, negative_numerical_preconditions, constraint=constraint, name=name)
 
 def merge_actions(a0, a1, ray_of_merge=3, constraint={"pre":{}, "eff":{}}):
     a0_function_effects = {k: v for k, v in a0.function_effects.items() if k != 'total-cost'}
     a1_function_effects = {k: v for k, v in a1.function_effects.items() if k != 'total-cost'}
-    merged_n_numerical_preconditions = {}
+    #merged_n_numerical_preconditions = {}
     # Check if the actions are of the same type and have the same effects
-    if a0.effects == a1.effects and a0.numerical_effects == a1.numerical_effects and a0_function_effects==a1_function_effects:
+    if a0.effects == a1.effects and a0.numerical_effects == a1.numerical_effects and a0_function_effects==a1_function_effects and a0.numerical_preconditions == a1.numerical_preconditions:
         # Merge the preconditions
         merging_a0_a1 = all(item in a1.preconditions.items() for item in a0.preconditions.items()) and all(item in a1.numerical_preconditions.items() for item in a0.numerical_preconditions.items())
         merging_a1_a0 = all(item in a0.preconditions.items() for item in a1.preconditions.items()) and all(item in a0.numerical_preconditions.items() for item in a1.numerical_preconditions.items())
         if merging_a0_a1:
             merged_preconditions = a0.preconditions
             merged_numerical_preconditions = a0.numerical_preconditions
+            # if list(constraint["pre"].keys())[0] in a1.numerical_preconditions and a1.numerical_preconditions[list(constraint["pre"].keys())[0]] == list(constraint["pre"].values())[0]:
+            #     merged_numerical_preconditions.update({list(constraint["pre"].keys())[0]: list(constraint["pre"].values())[0]})
+            # elif list(constraint["pre"].keys())[0] in a1.n_numerical_preconditions:
+            #     merged_n_numerical_preconditions.update({list(constraint["pre"].keys())[0]: list(constraint["pre"].values())[0]})
         elif merging_a1_a0:
             merged_preconditions = a1.preconditions
             merged_numerical_preconditions = a1.numerical_preconditions
+            # if list(constraint["pre"].keys())[0] in a0.numerical_preconditions and a0.numerical_preconditions[list(constraint["pre"].keys())[0]] == list(constraint["pre"].values())[0]:
+            #     merged_numerical_preconditions.update({list(constraint["pre"].keys())[0]: list(constraint["pre"].values())[0]})
+            # elif list(constraint["pre"].keys())[0] in a0.n_numerical_preconditions:
+            #     merged_n_numerical_preconditions.update({list(constraint["pre"].keys())[0]: list(constraint["pre"].values())[0]})
         else:
             # Remove precondition that are not in both actions or that have different values
             merged_preconditions = {k: v for k, v in a0.preconditions.items() if k in a1.preconditions and a1.preconditions[k] == v}
-            merged_numerical_preconditions = {k: v for k, v in a0.numerical_preconditions.items() if k in a1.numerical_preconditions and a1.numerical_preconditions[k] - v <= ray_of_merge}
-            merged_n_numerical_preconditions = {k: v for k, v in a0.n_numerical_preconditions.items() if k in a1.n_numerical_preconditions and (k in constraint["pre"] and constraint["pre"][k] == v)}
+            merged_numerical_preconditions = {k: v for k, v in a0.numerical_preconditions.items() if (k in a1.numerical_preconditions and a1.numerical_preconditions[k] - v <= ray_of_merge) or (k in constraint["pre"] and constraint["pre"][k] == v)}
+            #merged_n_numerical_preconditions = {k: v for k, v in a0.n_numerical_preconditions.items() if k in a1.n_numerical_preconditions or (k in constraint["pre"] and constraint["pre"][k] == v)}
             #merged_preconditions = {**a0.preconditions, **a1.preconditions}
             #merged_numerical_preconditions = {**a0.numerical_preconditions, **a1.numerical_preconditions}
-        merged_action = Action(a0.parameters, merged_preconditions, a0.effects, merged_numerical_preconditions, a0.numerical_effects, a0.function_effects, merged_n_numerical_preconditions, name=a0.name)
+        merged_action = Action(a0.parameters, merged_preconditions, a0.effects, merged_numerical_preconditions, a0.numerical_effects, a0.function_effects, a0.n_numerical_preconditions, constraint=constraint, name=a0.name)
         return merged_action
     else:
         return False
@@ -525,7 +545,8 @@ def split_action(action, constraint={"pre":{}, "eff":{}}):
         if effect == 'total-cost':
             continue
         # Create a copy of the action
-        new_action = Action(action.parameters.copy(), action.preconditions.copy(), {}, numerical_preconditions=action.numerical_preconditions.copy(), negative_numerical_preconditions=action.n_numerical_preconditions ,name=action.name + '_' + str(counter))
+        numerical_preconditions = action.numerical_preconditions.copy()
+        new_action = Action(action.parameters.copy(), action.preconditions.copy(), {}, numerical_preconditions=numerical_preconditions, negative_numerical_preconditions=action.n_numerical_preconditions, constraint=constraint ,name=action.name + '_' + str(counter))
         # Add the effect to the new action
         new_action.function_effects = {effect: value, 'total-cost': cost}
         # Add the new action to the list of actions
@@ -533,7 +554,7 @@ def split_action(action, constraint={"pre":{}, "eff":{}}):
         counter += 1
     for effect, value in action.numerical_effects.items():
         # Create a copy of the action
-        new_action = Action(action.parameters.copy(), action.preconditions.copy(), {}, numerical_preconditions=action.numerical_preconditions.copy(), function_effects={'total-cost':cost}, name=action.name + '_' + str(counter))
+        new_action = Action(action.parameters.copy(), action.preconditions.copy(), {}, numerical_preconditions=action.numerical_preconditions.copy(), function_effects={'total-cost':cost}, negative_numerical_preconditions=action.n_numerical_preconditions, name=action.name + '_' + str(counter))
         # Add the effect to the new action
         new_action.numerical_effects = {effect: value}
         # Add the new action to the list of actions
@@ -541,7 +562,7 @@ def split_action(action, constraint={"pre":{}, "eff":{}}):
         counter += 1
     for effect, value in action.effects.items():
         # Create a copy of the action
-        new_action = Action(action.parameters.copy(), action.preconditions.copy(), {}, numerical_preconditions=action.numerical_preconditions.copy(), function_effects={'total-cost':cost}, name=action.name + '_' + str(counter))
+        new_action = Action(action.parameters.copy(), action.preconditions.copy(), {}, numerical_preconditions=action.numerical_preconditions.copy(), function_effects={'total-cost':cost}, negative_numerical_preconditions=action.n_numerical_preconditions, name=action.name + '_' + str(counter))
         # Add the effect to the new action
         new_action.effects = {effect: value}
         # Add the new action to the list of actions

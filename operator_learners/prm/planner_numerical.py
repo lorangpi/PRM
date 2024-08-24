@@ -14,7 +14,7 @@ applicator = {'MOVE':['Reach'],
 
 pddl_path = "./PDDL_files"
 
-def call_planner(domain, problem, structure="pddl", pddl_dir=pddl_path, verbose=1):
+def call_planner(domain, problem, structure="pddl", pddl_dir=pddl_path, verbose=1, timeout=30):
     '''
         Given a domain and a problem file
         This function return the ffmetric Planner output.
@@ -23,10 +23,10 @@ def call_planner(domain, problem, structure="pddl", pddl_dir=pddl_path, verbose=
     domain_path = pddl_dir + os.sep + domain + ".pddl"
     problem_path = pddl_dir + os.sep + problem + ".pddl"
     if structure == "pddl":
-        run_script = f"../Metric-FF-v2.1/./ff -o {domain_path} -f {problem_path} -s 0"
+        run_script = f"timeout {str(timeout)}s ../Metric-FF-v2.1/./ff -o {domain_path} -f {problem_path} -s 5"
         output = subprocess.getoutput(run_script)
         #print("Output = ", output)
-        if "unsolvable" in output or "goal can be simplified to FALSE" in output:
+        if "unsolvable" in output or "goal can be simplified to FALSE" in output or "Bailing out." in output:
             return False, False
         try:
             if "plan cost" in output:
@@ -39,7 +39,8 @@ def call_planner(domain, problem, structure="pddl", pddl_dir=pddl_path, verbose=
             output = os.linesep.join([s for s in output.splitlines() if s])
         except Exception as e:
             if verbose:
-                print("The planner failed because of: {}.\nThe output of the planner was:\n{}".format(e, output))
+                print("The planner failed because of: {}.\n".format(e))
+                #print("The planner failed because of: {}.\nThe output of the planner was:\n{}".format(e, output))
             if "goal can be simplified to TRUE" in output:
                 return True, False
 

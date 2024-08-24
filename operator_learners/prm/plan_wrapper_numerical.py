@@ -70,7 +70,8 @@ class PlanWrapper(gym.Wrapper):
                 action_cost = self.transition_cost + 5 * len(learned_action.effects) + 5 * len(learned_action.numerical_effects) + 5 * len(learned_action.function_effects)
                 learned_action = update_action_cost(learned_action, cost=action_cost)
                 if learned_action.effects != {} or learned_action.numerical_effects != {} or len(learned_action.function_effects.keys()) > 1:
-                    learned_actions_list = split_action(learned_action)
+                    learned_actions_list = split_action(learned_action, constraint=self.constraint)
+                    #learned_actions_list = [learned_action]
                     for learned_action in learned_actions_list:
                          # Check if the learned action is not equal to any of the actions in the set of actions
                         exist = False
@@ -168,6 +169,7 @@ class PlanWrapper(gym.Wrapper):
                 print("Generating New Reward Machine. Plan Counter: ", self.plan_counter )
                 self.desired_goal = State(self.detector, init_predicates=np.random.choice(self.desired_goals), numerical=True)
                 self.filter_actions()
+                print("Action Split and Merged.")
                 replace_actions_in_domain(self.base_domain, self.new_domain, self.actions)
                 # Pop the first element of the plan counter log
                 self.plan_counter_log.pop(0)
@@ -200,6 +202,7 @@ class PlanWrapper(gym.Wrapper):
         # Generate a reward machine for the current desired goal
         #print("PDDL Goal: ", goal._to_pddl())
         
+        print("Planning...")
         generate_pddls(state, goal=goal._to_pddl(), filename=self.new_problem_name, pddl_dir=self.pddl_path)
         plan, _ = call_planner(self.new_domain_name, self.new_problem_name, pddl_dir=self.pddl_path)
         
