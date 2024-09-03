@@ -244,6 +244,7 @@ if __name__ == "__main__":
     parser.add_argument('--n_eval_episodes', type=int, default=20, help='Number of evaluation episodes')
     parser.add_argument('--task', type=str, default='reach', choices=['pick', 'reach', 'place'], help='Task to learn')
     parser.add_argument('--no_transfer', action='store_true', help='No transfer learning')
+    parser.add_argument('--icm_transfer', action='store_true', help='ICM transfer learning')
     parser.add_argument('--lr', type=float, default=0.0003, help='Learning rate') # 0.00005 0.00001
     parser.add_argument('--seed', type=int, default=0, help='Random seed')
     parser.add_argument('--dense', action='store_true', help='Use dense reward')
@@ -433,6 +434,16 @@ if __name__ == "__main__":
         else:
             print("\nTransfer learning")
             print("Transfering from source policy: ", source_path)
+            print("")
+        
+        if args.icm_transfer:
+            print("\nICM Transfer learning")
+            if i > 0:
+                print("Transfering from ICM model: ", os.path.join(previous_model_dir, 'icm'))
+                icm.load_model(os.path.join(previous_model_dir, 'icm'))
+            elif args.init_policy != None:
+                print("Transfering from ICM model: ", os.path.join(args.init_policy, 'icm'))
+                icm.load_model(os.path.join(args.init_policy, 'icm'))
             print("")
 
         # Evaluates the source_model on the eval_env for n_eval_between_novelty if it is not None, and saves the results as a csv file in logdir
