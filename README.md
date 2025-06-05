@@ -9,11 +9,15 @@ To install, clone this repo and run the following:
 
 From the root of the repo just run:
 ```
+conda create -n prm python=3.8.10
+conda activate prm
+pip install -r requirements.txt
 (If the code is given as zipfile, you do not need the next step)
 git submodule update --init --recursive
 cd robosuite
 pip install -e .
 ```
+Other libraries might be needed.
 
 
 ## Usage
