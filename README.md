@@ -1,6 +1,6 @@
 # Code related to the paper "Curiosity-Driven Imagination: Discovering Plan Operators and Learning Associated Policies for Open-World Adaptation" ICRA 2025
 
-Link to the paper: https://arxiv.org/pdf/2503.04931?
+Link to the paper: https://arxiv.org/pdf/2503.04931
 
 ## Setup
 
