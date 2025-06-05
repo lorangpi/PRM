@@ -1,17 +1,23 @@
-# RapidHER and OpenAI gym interface for RoboSuite
+# Code related to the paper "Curiosity-Driven Imagination: Discovering Plan Operators and Learning Associated Policies for Open-World Adaptation" ICRA 2025
+
+Link to the paper: https://arxiv.org/pdf/2503.04931?
 
 ## Setup
 
-First make sure you have installed the modified `Robosuite` git repository which is a sub-module of this git repository.
+First make sure you have installed the modified `Robosuite` git repository (https://github.com/lorangpi/robosuite/tree/goal_env) which is a sub-module of this git repository.
 To install, clone this repo and run the following:
 
 From the root of the repo just run:
 ```
+conda create -n prm python=3.8.10
+conda activate prm
+pip install -r requirements.txt
 (If the code is given as zipfile, you do not need the next step)
 git submodule update --init --recursive
 cd robosuite
 pip install -e .
 ```
+Other libraries might be needed.
 
 
 ## Usage

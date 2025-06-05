@@ -1,0 +1,9 @@
+pip==21.3.1
+setuptools==68.2.2
+numpy==1.23.5
+gym==0.21.0
+gymnasium==0.29.1
+torch  # upgrade to latest version
+torchvision  # upgrade to latest version
+matplotlib
+stable_baselines3
