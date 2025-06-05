@@ -27,48 +27,18 @@ class RewardMachine:
         self.current_state_index = 0
         self.reward = -1
 
-    def get_reward2(self, state):
-        # If the agent is not following a plan, return the total reward if the goal is satisfied
-        if self.plan == False:
-            return -1
-        if self.state_sequence is not None:
-            for i in range(0, len(self.state_sequence)):
-                if i in self.visited_states:
-                    continue
-                next_state = self.state_sequence[i]
-                if state.satisfies(next_state):
-                    self.visited_states.append(i)
-                    reward = 100
-                    #print("Reward = ", reward)
-                    return reward
-        # If not all predicates are met, return -1
-        return -1
-
     def get_reward(self, state):
         # If the agent is not following a plan, return the total reward if the goal is satisfied
         if self.plan == False:
-            # if state.satisfies(self.goal):
-            #     return self.total_reward
-            # else:
-            #     return -1
-            return -1
-        #if state.satisfies(self.goal):
-        #        #print("Goal Reached: Reward = ", self.total_reward)
-        #        return self.total_reward
-        # Check if all predicates in the next state in the label sequence are met in the current state
+            if state.satisfies(self.goal):
+                return self.total_reward
+            else:
+                return -1
         if self.state_sequence is not None:
             for i in range(self.current_state_index, len(self.state_sequence)):
                 next_state = self.state_sequence[i]
                 if state.satisfies(next_state):
-                    #print("State satisfies:  ", next_state._to_pddl())
-                    # Calculate the reward for reaching the next state in the sequence
-                    # The reward is proportional to the current state index
-                    # If the agent jumps a state, it gets the sum of the rewards for the skipped states
-                    #reward = self.total_reward * sum(range(0 + 1, i + 2))  / sum(range(1, len(self.state_sequence) + 1))
-                    #print("Reward = ", reward)
-                    #self.current_state_index = i + 1
                     reward = -1 + 0.8 * sum(range(0 + 1, i + 2))  / sum(range(1, len(self.state_sequence) + 1))
-                    #print("Reward = ", reward)
                     return reward
         # If not all predicates are met, return -1
         return -1
@@ -93,16 +63,6 @@ class RewardMachine:
     def apply_action(self, state, track_predicates, action):
         # Create a copy of the state
         new_state = {}
-
-        ## Check if the action's preconditions are satisfied in the current state
-        #for precondition, value in action.preconditions.items():
-            #print("Precondition = ", precondition)
-            #print("New State = ", new_state.grounded_predicates)
-            #if '=' in precondition:
-            #        continue
-            #if new_state.grounded_predicates[precondition] != value:
-            #    raise ValueError(f"Action {action.name} preconditions not satisfied in the current state {new_state.grounded_predicates}")
-
         # Apply the action's effects to the state
         for effect, value in action.effects.items():
             new_state[effect] = value
@@ -155,22 +115,4 @@ class RewardMachine:
             else:
                 # Add the next state to the state sequence
                 state_sequence.append(current_state)
-        """
-        state1 = State(initial_state.detector, init_predicates={"at_gripper(gripper,activate)": 5})
-        state2 = State(initial_state.detector, init_predicates={"at_gripper(gripper,activate)": 4})
-        state3 = State(initial_state.detector, init_predicates={"at_gripper(gripper,activate)": 3})
-        state4 = State(initial_state.detector, init_predicates={"at_gripper(gripper,activate)": 2})
-        state6 = State(initial_state.detector, init_predicates={"at(can,drop)": 4})
-        state7 = State(initial_state.detector, init_predicates={"at(can,drop)": 3})
-        state8 = State(initial_state.detector, init_predicates={"at(can,drop)": 2})
-        state9 = State(initial_state.detector, init_predicates={"at(can,drop)": 1})
-
-        state_sequence = [state1, state2, state3, state4, state6, state7, state8, state9]
-        """
-
-        # Return the state sequence
-        #print("State Sequence = ", state_sequence)
-        #for i in range(abs(10-abs(goal))):
-        #    init_predicate = {"at(can,drop)": 10-i} if goal <10 else {"at(can,drop)": 10+i}
-        #    state_sequence.append(State(initial_state.detector, init_predicates=init_predicate))
         return state_sequence

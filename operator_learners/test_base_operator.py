@@ -26,8 +26,8 @@ env = suite.make(
     #"Elevated",
     #"Obstacle",
     #"Door",
-    #"Hole",
-    "Locked",
+    "Hole",
+    #"Locked",
     #"Lightoff",
     robots="Kinova3",
     #robots="Fetch",
@@ -35,13 +35,13 @@ env = suite.make(
     has_renderer=True,
     has_offscreen_renderer=True,
     horizon=100000000,
-    render_camera="agentview",#"robot0_eye_in_hand", # Available "camera" names = ('frontview', 'birdview', 'agentview', 'robot0_robotview', 'robot0_eye_in_hand')
+    render_camera="frontview",#"robot0_eye_in_hand", # Available "camera" names = ('frontview', 'birdview', 'agentview', 'robot0_robotview', 'robot0_eye_in_hand')
 )
 env = GymWrapper(env, keys=['robot0_proprio-state', 'object-state'])
 env = ReachWrapper(env, dense_reward=False, augmented_obs=True)
 task_goal = {"at(can,drop)":1, "grasped(can)":True,}
 detector = RoboSuite_PickPlace_Detector(env, grid_size=200)
-env = PlanWrapper(env, task_goal=task_goal, actions=[], detector=detector, num_timesteps=10000000)
+#env = PlanWrapper(env, task_goal=task_goal, actions=[], detector=detector, num_timesteps=10000000)
 #env = HERWrapper(env, symbolic_goal=False)
 
 device = Keyboard()
@@ -55,7 +55,8 @@ device.start_control()
 
 # Load the model
 #model = SAC.load("/home/lorangpi/PRM/operator_learners/results/prm_icm/sac_augmented_dense_False_seed_0/prm_new/Elevated/models/best_model.zip", env=env, custom_objects={'observation_space': env.observation_space, 'action_space': env.action_space})
-model = SAC.load("/home/lorangpi/PRM/operator_learners/best_model.zip", env=env, custom_objects={'observation_space': env.observation_space, 'action_space': env.action_space})
+#model = SAC.load("/home/lorangpi/PRM/operator_learners/best_model.zip", env=env, custom_objects={'observation_space': env.observation_space, 'action_space': env.action_space})
+model = SAC.load("/home/lorangpi/PRM/operator_learners/data/test/best_model.zip", env=env, custom_objects={'observation_space': env.observation_space, 'action_space': env.action_space})
 
 print("\nResetting environment\n")
 obs, _ = env.reset()

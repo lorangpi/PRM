@@ -4,6 +4,7 @@ import os
 import robosuite as suite
 import time
 import warnings
+import gymnasium as gym
 from datetime import datetime
 from stable_baselines3.common.env_checker import check_env
 from robosuite.wrappers.gym_wrapper import GymWrapper
@@ -16,7 +17,7 @@ from prm.plan_wrapper_numerical import PlanWrapper
 from prm.plan_wrapper_numerical_her import HERPlanWrapper
 #from prm.action import load_action_from_file, restrict_action, replace_actions_in_domain, update_action_cost
 from detector import RoboSuite_PickPlace_Detector
-from stable_baselines3 import SAC, HerReplayBuffer
+from stable_baselines3 import SAC, HerReplayBuffer, DQN, PPO
 from stable_baselines3.her.goal_selection_strategy import GoalSelectionStrategy
 from stable_baselines3.common.callbacks import EvalCallback, CallbackList, StopTrainingOnRewardThreshold, StopTrainingOnNoModelImprovement
 from stable_baselines3.common.monitor import Monitor
@@ -26,6 +27,12 @@ from stable_baselines3.common.evaluation import evaluate_policy
 warnings.filterwarnings("ignore")
 controller_config = suite.load_controller_config(default_controller='OSC_POSITION')
 
+# Register the environment
+gym.register(
+    id='HRL-v0',
+    entry_point='hierarchical_transfer.HRL:HRL',
+    max_episode_steps=1000,
+)
 
 # Custom Evaluation Callback to save the results in a csv file
 class CustomEvalCallback(EvalCallback):
@@ -140,7 +147,22 @@ def learn_policy(args, env, eval_env, name, policy=None, icm=None):
     # Define the model
     if policy == None:
         # Verifies if "her" is in args.experiment
-        if "her" in args.experiment or args.prm_her:
+        if args.hrl_transfer:
+            model = PPO(
+                'MlpPolicy',
+                env,
+                learning_rate=args.lr,
+                #buffer_size=int(1e6),
+                #learning_starts=1000,
+                batch_size=256,
+                #tau=0.005,
+                #gamma=0.99,
+                policy_kwargs=dict(net_arch=[512, 256, 64]),
+                verbose=1,
+                tensorboard_log=args.logdir,
+                seed=args.seed
+            )
+        elif "her" in args.experiment or args.prm_her:
             model = SAC(
                 'MultiInputPolicy',
                 env,
@@ -172,7 +194,9 @@ def learn_policy(args, env, eval_env, name, policy=None, icm=None):
                 batch_size=256,
                 tau=0.005,
                 gamma=0.99,
-                policy_kwargs=dict(net_arch=[512, 512, 256]),
+                #CHANGED 
+                #policy_kwargs=dict(net_arch=[512, 512, 256]),
+                policy_kwargs=dict(net_arch=[16, 4]),
                 verbose=1,
                 tensorboard_log=args.logdir,
                 seed=args.seed
@@ -185,7 +209,7 @@ def learn_policy(args, env, eval_env, name, policy=None, icm=None):
     callbacks = []
 
     # Create the ICM callback
-    if args.icm:
+    if args.icm and not args.hrl_transfer:
         # Initialize the ICM training callback
         icm_training_callback = ICMTrainingCallback(icm)
 
@@ -245,6 +269,7 @@ if __name__ == "__main__":
     parser.add_argument('--task', type=str, default='reach', choices=['pick', 'reach', 'place'], help='Task to learn')
     parser.add_argument('--no_transfer', action='store_true', help='No transfer learning')
     parser.add_argument('--icm_transfer', action='store_true', help='ICM transfer learning')
+    parser.add_argument('--hrl_transfer', action='store_true', help='HRL transfer learning')
     parser.add_argument('--lr', type=float, default=0.0003, help='Learning rate') # 0.00005 0.00001
     parser.add_argument('--seed', type=int, default=0, help='Random seed')
     parser.add_argument('--dense', action='store_true', help='Use dense reward')
@@ -259,6 +284,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
     # Set the random seed
     np.random.seed(args.seed)
+
+    if args.icm_transfer or args.hrl_transfer:
+        args.icm = True
 
     # Define the evaluation frequency
     args.eval_freq = min(args.eval_freq, args.timesteps)
@@ -402,7 +430,7 @@ if __name__ == "__main__":
         source_path = None
         previous_model_dir = os.path.join(args.experiment_dir, list_of_novelties[i-1], 'models')
 
-        if not(args.no_transfer):
+        if not(args.no_transfer) and not(args.hrl_transfer):
             if i == 0: 
                 if args.init_policy != None:
                     source_path = os.path.join(args.init_policy, 'best_model')
@@ -445,41 +473,41 @@ if __name__ == "__main__":
                 print("Transfering from ICM model: ", os.path.join(args.init_policy, 'icm'))
                 icm.load_model(os.path.join(args.init_policy, 'icm'))
             print("")
-
+        
         # Evaluates the source_model on the eval_env for n_eval_between_novelty if it is not None, and saves the results as a csv file in logdir
-        if source_model != None:
-            print("Evaluating the source policy on the eval_env for {} episodes.".format(n_eval_between_novelty))
-            source_model.set_env(eval_env)
-            mean_reward = 0
-            mean_episode_length = 0
-            success_rate = 0
-            for episode in range(n_eval_between_novelty):
-                episode_rew = 0
-                success = False
-                episode_length = 0
-                done = False
-                obs, info = eval_env.reset()
-                while not done:
-                    action, _ = source_model.predict(obs, deterministic=True)
-                    obs, reward, terminated, truncated, info = eval_env.step(action)
-                    if info.get('is_success') is not None:
-                        success = info.get('is_success')
-                    episode_rew += reward
-                    episode_length += 1
-                    done = terminated or truncated
-                success_rate += success
-                mean_reward += episode_rew
-                mean_episode_length += episode_length
-            success_rate = success_rate / n_eval_between_novelty
-            mean_reward = mean_reward / n_eval_between_novelty
-            mean_episode_length = mean_episode_length / n_eval_between_novelty
-            # Save the success rate, the reward and the episode length in a csv file
-            with open(os.path.join(args.logdir, 'results_eval.csv'), 'a') as f:
-                f.write("{},{},{},{}\n".format('pre_training', success_rate, mean_reward, mean_episode_length))
-                f.close()
-            print("Pre-training Success rate: {}, Reward: {}, Episode length: {}".format(success_rate, mean_reward, mean_episode_length))
+        # if source_model != None:
+        #     print("Evaluating the source policy on the eval_env for {} episodes.".format(n_eval_between_novelty))
+        #     source_model.set_env(eval_env)
+        #     mean_reward = 0
+        #     mean_episode_length = 0
+        #     success_rate = 0
+        #     for episode in range(n_eval_between_novelty):
+        #         episode_rew = 0
+        #         success = False
+        #         episode_length = 0
+        #         done = False
+        #         obs, info = eval_env.reset()
+        #         while not done:
+        #             action, _ = source_model.predict(obs, deterministic=True)
+        #             obs, reward, terminated, truncated, info = eval_env.step(action)
+        #             if info.get('is_success') is not None:
+        #                 success = info.get('is_success')
+        #             episode_rew += reward
+        #             episode_length += 1
+        #             done = terminated or truncated
+        #         success_rate += success
+        #         mean_reward += episode_rew
+        #         mean_episode_length += episode_length
+        #     success_rate = success_rate / n_eval_between_novelty
+        #     mean_reward = mean_reward / n_eval_between_novelty
+        #     mean_episode_length = mean_episode_length / n_eval_between_novelty
+        #     # Save the success rate, the reward and the episode length in a csv file
+        #     with open(os.path.join(args.logdir, 'results_eval.csv'), 'a') as f:
+        #         f.write("{},{},{},{}\n".format('pre_training', success_rate, mean_reward, mean_episode_length))
+        #         f.close()
+        #     print("Pre-training Success rate: {}, Reward: {}, Episode length: {}".format(success_rate, mean_reward, mean_episode_length))
 
-            source_model.set_env(env)
+        #     source_model.set_env(env)
 
         # Trains the policy
         # PRM
@@ -513,7 +541,29 @@ if __name__ == "__main__":
             detector = RoboSuite_PickPlace_Detector(env, grid_size=200)
             env = HERPlanWrapper(env, task_goal=task_goal, actions=actions, detector=detector, num_timesteps=args.timesteps, pddl_path=args.pddldir)
             eval_env = HERPlanWrapper(eval_env, task_goal=task_goal, actions=actions, detector=detector, num_timesteps=args.timesteps, pddl_path=args.pddldir)
-        if args.icm:
+        if args.hrl_transfer:
+            print("\nHRL Transfer learning\n")
+            if i > 0:
+                print("Transfering from source policy: ", os.path.join(previous_model_dir, 'best_model'))
+                source_model = load_policy(args, env, os.path.join(previous_model_dir, 'best_model'))
+                icm.load_model(os.path.join(previous_model_dir, 'icm'))
+            elif args.init_policy != None:
+                print("Transfering from source policy: ", os.path.join(args.init_policy, 'best_model'))
+                source_model = load_policy(args, env, os.path.join(args.init_policy, 'best_model'))
+                icm.load_model(os.path.join(args.init_policy, 'icm'))
+            print("")
+            env = gym.make('HRL-v0', env=env, teacher_policy=source_model, icm_network=icm)
+            eval_env = gym.make('HRL-v0', env=eval_env, teacher_policy=source_model, student_policy=env.student_policy, icm_network=icm)
+            print("Using HRL")
+            env = Monitor(env, filename=None, allow_early_resets=True)
+            eval_env = Monitor(eval_env, filename=None, allow_early_resets=True)
+            #if source_model != None:
+            #    source_model.set_env(env)
+            env.reset(seed=args.seed)
+            eval_env.reset(seed=args.seed)
+            model = learn_policy(args, env, eval_env, list_of_novelties[i])
+
+        elif args.icm:
             print("Using ICM")
             env = ICMWrapper(env, icm)
             env = Monitor(env, filename=None, allow_early_resets=True)
@@ -526,8 +576,8 @@ if __name__ == "__main__":
         else:
             env = Monitor(env, filename=None, allow_early_resets=True)
             eval_env = Monitor(eval_env, filename=None, allow_early_resets=True)
-            if source_model != None:
-                source_model.set_env(env)
+            #if source_model != None:
+            #    source_model.set_env(env)
             env.reset(seed=args.seed)
             eval_env.reset(seed=args.seed)
             model = learn_policy(args, env, eval_env, list_of_novelties[i], source_model)

@@ -58,8 +58,6 @@ class PlanWrapper(gym.Wrapper):
     def update_actions_goals(self):
         self.transition_cost += 1
         state = State(self.detector, numerical=True)
-        #print("State: ", state.grounded_predicates)
-        #print("Memory State: ", self.memory_state.grounded_predicates)
         
         if state.compare(self.memory_state) != {}:
             state_hash = state.__hash__()
@@ -97,24 +95,8 @@ class PlanWrapper(gym.Wrapper):
                                     exist = True
                                 break
                         if not exist:
-                            #print("NAME ", learned_action.name)
-                            #print("EFFECTS: ", learned_action.effects)
-                            #print("NUM EFFECTS: ", learned_action.numerical_effects)
-                            #print("F EFFECTS: ", learned_action.function_effects)
-                            #print("PRE: ", learned_action.preconditions)
-                            #print()
                             self.actions.append(learned_action)
                             self.action_counter += 1
-            # if state_hash not in self.no_path_set_hashes and state_hash not in self.goal_set_hashes:
-            #     # The planner will return a plan to reach the task goal, if a plan it exists, else False
-            #     planner.generate_pddls(state, self.task_goal._to_pddl(), filename=self.new_problem_name, pddl_dir=pddl_path)
-            #     plan, _ = planner.call_planner(self.domain, self.problem)
-            #     # print("The plan is: ", plan)
-            #     if plan != False:
-            #         self.desired_goals.append(state)
-            #         self.goal_set_hashes.append(state_hash)
-            #     else:
-            #         self.no_path_set_hashes.append(state_hash)
             self.memory_state = state
             self.memory_state_hash = state_hash
             self.transition_cost = 0
@@ -152,7 +134,6 @@ class PlanWrapper(gym.Wrapper):
         reward = max(reward, generated_reward)
         if not(state.grounded_predicates['grasped(can)']):
             reward = -2
-        #print("Reward: ", reward)
         return observation, reward, terminated, truncated, info
 
     def reset(self, seed=None, **kwargs):
@@ -180,17 +161,7 @@ class PlanWrapper(gym.Wrapper):
                 self.filter_actions()
                 replace_actions_in_domain(self.base_domain, self.new_domain, self.actions)
                 self.reward_machine = self.generate_reward_machine()
-        #self.reward_machine.reset_reward()
-        # Randomly choose a desired goal from the set of desired goals every each 5 resets
-        # if self.plan_counter % self.reset_plan == 0 or self.plan_counter == 0:
-        #     self.desired_goal = State(self.detector, np.random.choice(self.desired_goals), numerical=True)
-        #     print("ARRAY DESIRED GOAL: ", self.desired_goal)
-        #     self.reset_state = State(self.detector, numerical=True)
-        #     self.memory_state = State(self.detector, numerical=True)
-        #     self.memory_state_hash = self.hash_state(self.memory_state)
-        #     replace_actions_in_domain(self.domain, self.actions)
         self.plan_counter += 1
-        #print("Plan Counter: ", self.plan_counter)
         return obs, info
 
     def generate_reward_machine(self, state=None, goal=None):
@@ -200,8 +171,6 @@ class PlanWrapper(gym.Wrapper):
         if goal is None:
             goal = self.desired_goal
         # Generate a reward machine for the current desired goal
-        #print("PDDL Goal: ", goal._to_pddl())
-        
         print("Planning...")
         generate_pddls(state, goal=goal._to_pddl(), filename=self.new_problem_name, pddl_dir=self.pddl_path)
         plan, _ = call_planner(self.new_domain_name, self.new_problem_name, pddl_dir=self.pddl_path)

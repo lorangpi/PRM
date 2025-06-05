@@ -18,40 +18,6 @@ class RewardMachine:
             label_sequence.append(label)
         return label_sequence
 
-    def get_reward3(self, state):
-        if not(type(state) == dict):
-            state = state.grounded_predicates
-        # Check if all predicates in the next state in the label sequence are met in the current state
-        if self.state_sequence is not None:
-            next_state = self.state_sequence[self.current_state_index]
-            #print("\nNext State = ", next_state.grounded_predicates)
-            #print("Current State = ", state.grounded_predicates)
-            #print(all(item in state.grounded_predicates.items() for item in next_state.grounded_predicates.items()), "\n")
-            
-            if all(item in state.grounded_predicates.items() for item in next_state.grounded_predicates.items()):
-                # If all predicates are met, update the current state index
-                self.current_state_index += 1
-                # Return the reward for reaching the next state in the sequence
-                return self.total_reward / len(self.state_sequence)
-        # If not all predicates are met, return -1
-        return -1
-
-    def get_reward2(self, state):
-        if not(type(state) == dict):
-            state = state.grounded_predicates
-        # Check if all predicates in the next state in the label sequence are met in the current state
-        if self.state_sequence is not None:
-            for i, next_state in enumerate(self.state_sequence[self.current_state_index:]):
-                if all(item in state.items() for item in next_state.grounded_predicates.items()):
-                    # Calculate the reward for reaching the next state in the sequence
-                    # The reward is proportional to the current state index
-                    # If the agent jumps a state, it gets the sum of the rewards for the skipped states
-                    self.current_state_index += i + 1
-                    reward = self.current_state_index * self.total_reward / sum(range(1, len(self.state_sequence) + 1))
-                    return reward
-        # If not all predicates are met, return -1
-        return -1
-
     def get_reward(self, state):
         if not(type(state) == dict):
             state = state.grounded_predicates
@@ -87,17 +53,7 @@ class RewardMachine:
     
     def apply_action(self, state, action):
         # Create a copy of the state
-        new_state = State(state.detector, init_predicates={})#copy.copy(state)
-
-        ## Check if the action's preconditions are satisfied in the current state
-        #for precondition, value in action.preconditions.items():
-            #print("Precondition = ", precondition)
-            #print("New State = ", new_state.grounded_predicates)
-            #if '=' in precondition:
-            #        continue
-            #if new_state.grounded_predicates[precondition] != value:
-            #    raise ValueError(f"Action {action.name} preconditions not satisfied in the current state {new_state.grounded_predicates}")
-
+        new_state = State(state.detector, init_predicates={})
         # Apply the action's effects to the state
         for effect, value in action.effects.items():
             new_state.grounded_predicates[effect] = value
@@ -133,5 +89,4 @@ class RewardMachine:
             current_state = next_state
 
         # Return the state sequence
-        #print("State Sequence = ", state_sequence)
         return state_sequence
