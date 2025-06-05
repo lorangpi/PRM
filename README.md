@@ -4,7 +4,7 @@ Link to the paper: https://arxiv.org/pdf/2503.04931?
 
 ## Setup
 
-First make sure you have installed the modified `Robosuite` git repository which is a sub-module of this git repository.
+First make sure you have installed the modified `Robosuite` git repository (https://github.com/lorangpi/robosuite/tree/goal_env) which is a sub-module of this git repository.
 To install, clone this repo and run the following:
 
 From the root of the repo just run:
